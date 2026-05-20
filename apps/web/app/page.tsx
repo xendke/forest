@@ -1,8 +1,17 @@
+import { Navbar } from "@/components/Navbar"
+import { Hero } from "@/components/Hero"
+import { Features } from "@/components/Features"
+import { Footer } from "@/components/Footer"
+
 export default function Home() {
   return (
-    <main>
-      <h1>Forest</h1>
-      <p>Hello from Next.js</p>
-    </main>
+    <>
+      <Navbar />
+      <main>
+        <Hero />
+        <Features />
+      </main>
+      <Footer />
+    </>
   )
 }
