@@ -1,10 +1,15 @@
 import bcrypt from 'bcrypt'
+import type { MercuriusContext } from 'mercurius'
 import { prisma } from './prisma'
 import { signToken, verifyToken } from './auth'
 
-const SALT_ROUNDS = 12
+declare module 'mercurius' {
+  interface MercuriusContext {
+    authHeader?: string
+  }
+}
 
-type Context = { authHeader?: string }
+const SALT_ROUNDS = 12
 
 function serializeUser(user: {
   id: number
@@ -23,7 +28,7 @@ function serializeUser(user: {
 export const resolvers = {
   Query: {
     hello: async () => 'Hello from Forest API!',
-    me: async (_: unknown, __: unknown, context: Context) => {
+    me: async (_: unknown, __: unknown, context: MercuriusContext) => {
       if (!context.authHeader?.startsWith('Bearer ')) return null
       const payload = verifyToken(context.authHeader.slice(7))
       if (!payload) return null
