@@ -63,7 +63,7 @@ export function Hero() {
             <Link href="#about">About</Link>
           </Button>
           <Button size="lg" asChild>
-            <Link href="#join">Join Now →</Link>
+            <Link href="/join">Join Now →</Link>
           </Button>
         </div>
       </div>

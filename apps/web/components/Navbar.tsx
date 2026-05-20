@@ -35,8 +35,8 @@ export function Navbar() {
           >
             Demo
           </Link>
-          <Button size="sm" className="rounded-full px-5 text-xs font-semibold h-8">
-            Join Now
+          <Button size="sm" className="rounded-full px-5 text-xs font-semibold h-8" asChild>
+            <Link href="/join">Join Now</Link>
           </Button>
         </div>
       </nav>
