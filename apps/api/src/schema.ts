@@ -7,6 +7,7 @@ export const typeDefs = `
   type Mutation {
     register(email: String!, password: String!): AuthPayload!
     login(email: String!, password: String!, rememberMe: Boolean): AuthPayload!
+    updateProfile(firstName: String, dob: String): User!
   }
 
   type User {

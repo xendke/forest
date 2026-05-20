@@ -68,5 +68,24 @@ export const resolvers = {
       const token = signToken(user.id, rememberMe)
       return { token, user: serializeUser(user) }
     },
+
+    updateProfile: async (
+      _: unknown,
+      { firstName, dob }: { firstName?: string; dob?: string },
+      context: MercuriusContext
+    ) => {
+      if (!context.authHeader?.startsWith('Bearer ')) throw new Error('Unauthorized')
+      const payload = verifyToken(context.authHeader.slice(7))
+      if (!payload) throw new Error('Unauthorized')
+
+      const user = await prisma.user.update({
+        where: { id: payload.userId },
+        data: {
+          ...(firstName !== undefined ? { firstName } : {}),
+          ...(dob !== undefined ? { dob: new Date(dob) } : {}),
+        },
+      })
+      return serializeUser(user)
+    },
   },
 }

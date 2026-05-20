@@ -59,7 +59,7 @@ export function AuthForm({ mode }: AuthFormProps) {
       const store = rememberMe ? localStorage : sessionStorage
       store.setItem("forest_token", payload.token)
 
-      window.location.href = "/"
+      window.location.href = isJoin ? "/onboarding" : "/home"
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Something went wrong")
     } finally {
