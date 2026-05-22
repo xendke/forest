@@ -1,5 +1,4 @@
-import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { HeroActions } from "@/components/HeroActions"
 
 export function Hero() {
   return (
@@ -59,12 +58,7 @@ export function Hero() {
         </div>
 
         <div className="flex items-center justify-center gap-4 pt-2">
-          <Button variant="outline" size="lg" asChild>
-            <Link href="#about">About</Link>
-          </Button>
-          <Button size="lg" asChild>
-            <Link href="/join">Join Now →</Link>
-          </Button>
+          <HeroActions />
         </div>
       </div>
 
