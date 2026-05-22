@@ -1,5 +1,5 @@
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
+import { NavCTA } from "@/components/NavCTA"
 
 export function Navbar() {
   return (
@@ -35,9 +35,7 @@ export function Navbar() {
           >
             Demo
           </Link>
-          <Button size="sm" className="rounded-full px-5 text-xs font-semibold h-8" asChild>
-            <Link href="/join">Join Now</Link>
-          </Button>
+          <NavCTA />
         </div>
       </nav>
     </header>
