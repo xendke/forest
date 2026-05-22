@@ -39,9 +39,8 @@ Thumbs.db
 # TypeScript
 *.tsbuildinfo
 
-# Prisma
-prisma/migrations/
-!prisma/migrations/.gitkeep
+# Prisma generated client (re-created by postinstall)
+**/prisma/generated/
 
 # Testing
 coverage/
