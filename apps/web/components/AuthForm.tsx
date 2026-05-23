@@ -56,8 +56,16 @@ export function AuthForm({ mode }: AuthFormProps) {
       if (json.errors?.length) throw new Error(json.errors[0].message)
 
       const payload = json.data.register ?? json.data.login
-      const store = rememberMe ? localStorage : sessionStorage
-      store.setItem("forest_token", payload.token)
+
+      const secure = window.location.protocol === 'https:'
+      const parts = [
+        `forest_token=${encodeURIComponent(payload.token)}`,
+        'path=/',
+        'SameSite=Lax',
+        ...(rememberMe ? [`Max-Age=${30 * 24 * 60 * 60}`] : []),
+        ...(secure ? ['Secure'] : []),
+      ]
+      document.cookie = parts.join('; ')
 
       window.location.href = isJoin ? "/onboarding" : "/home"
     } catch (err: unknown) {

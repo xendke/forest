@@ -7,8 +7,7 @@ export default function LogoutPage() {
   const router = useRouter()
 
   useEffect(() => {
-    localStorage.removeItem("forest_token")
-    sessionStorage.removeItem("forest_token")
+    document.cookie = 'forest_token=; path=/; Max-Age=0; SameSite=Lax'
     router.replace("/login")
   }, [router])
 

@@ -8,9 +8,8 @@ export function AuthGuard({ children }: { children: React.ReactNode }) {
   const router = useRouter()
 
   useEffect(() => {
-    const token =
-      localStorage.getItem("forest_token") ??
-      sessionStorage.getItem("forest_token")
+    const match = document.cookie.match(/(?:^|;)\s*forest_token=([^;]*)/)
+    const token = match ? decodeURIComponent(match[1]) : null
 
     if (!token) {
       router.replace("/")

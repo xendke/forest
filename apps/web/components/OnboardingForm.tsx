@@ -15,11 +15,10 @@ const UPDATE_PROFILE = `
   }
 `
 
-function getToken() {
-  return (
-    localStorage.getItem("forest_token") ??
-    sessionStorage.getItem("forest_token")
-  )
+function getToken(): string | null {
+  if (typeof window === 'undefined') return null
+  const match = document.cookie.match(/(?:^|;)\s*forest_token=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
 }
 
 export function OnboardingForm() {

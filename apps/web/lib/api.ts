@@ -1,13 +1,14 @@
-function getToken(): string | null {
+export function getClientToken(): string | null {
   if (typeof window === 'undefined') return null
-  return localStorage.getItem('forest_token') ?? sessionStorage.getItem('forest_token')
+  const match = document.cookie.match(/(?:^|;)\s*forest_token=([^;]*)/)
+  return match ? decodeURIComponent(match[1]) : null
 }
 
 export async function gql<T = unknown>(
   query: string,
   variables?: Record<string, unknown>
 ): Promise<T> {
-  const token = getToken()
+  const token = getClientToken()
   const apiUrl = process.env.NEXT_PUBLIC_API_URL ?? 'http://localhost:4000'
 
   const res = await fetch(`${apiUrl}/graphql`, {

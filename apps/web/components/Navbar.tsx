@@ -1,7 +1,10 @@
 import Link from "next/link"
-import { NavCTA } from "@/components/NavCTA"
+import { Button } from "@/components/ui/button"
+import { getServerToken } from "@/lib/auth"
 
 export function Navbar() {
+  const isLoggedIn = !!getServerToken()
+
   return (
     <header className="fixed top-0 left-0 right-0 z-50 px-4 pt-4">
       <nav
@@ -35,7 +38,11 @@ export function Navbar() {
           >
             Demo
           </Link>
-          <NavCTA />
+          <Button size="sm" className="rounded-full px-5 text-xs font-semibold h-8" asChild>
+            <Link href={isLoggedIn ? "/home" : "/join"}>
+              {isLoggedIn ? "Dashboard" : "Join Now"}
+            </Link>
+          </Button>
         </div>
       </nav>
     </header>
