@@ -3,7 +3,7 @@ import type { Metadata } from "next"
 import { getServerToken } from "@/lib/auth"
 import { serverGql } from "@/lib/api.server"
 import { QuizModal } from "@/components/QuizModal"
-import { AppHeader } from "@/components/AppHeader"
+import { Navbar } from "@/components/Navbar"
 import { WellbeingCard } from "@/components/WellbeingCard"
 import { CheckInCard } from "@/components/CheckInCard"
 import type { DailyQuiz } from "@/types/quiz"
@@ -79,7 +79,7 @@ export default async function HomePage() {
           `,
         }}
       >
-        <AppHeader firstName={firstName} />
+        <Navbar variant="app" firstName={firstName} />
 
         <main className="max-w-[1280px] mx-auto px-7 pb-20">
           {/* Greeting */}

@@ -23,7 +23,7 @@ const features = [
 
 export function Features() {
   return (
-    <section id="about" className="relative py-32 px-4 overflow-hidden">
+    <section id="how-it-works" className="relative py-32 px-4 overflow-hidden">
       {/* Subtle section divider glow */}
       <div
         className="absolute top-0 left-1/2 -translate-x-1/2 w-px h-24 pointer-events-none"
