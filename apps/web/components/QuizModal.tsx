@@ -1,6 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
+import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { gql } from "@/lib/api"
 import type { DailyQuiz, QuestionType } from "@/types/quiz"
@@ -145,6 +146,7 @@ function initAnswers(quiz: DailyQuiz | null | undefined): Record<number, string>
 }
 
 export function QuizModal({ initialQuiz }: QuizModalProps) {
+  const router = useRouter()
   const [screen, setScreen] = useState<Screen>(() => {
     if (initialQuiz === undefined) return "loading"
     if (!initialQuiz || initialQuiz.completed || initialQuiz.skipped) return "hidden"
@@ -207,6 +209,7 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
     if (!quiz) return
     await gql(COMPLETE_QUIZ, { quizId: quiz.id, skipped: true })
     setScreen("hidden")
+    router.refresh()
   }
 
   if (screen === "loading" || screen === "hidden") return null
@@ -298,7 +301,11 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
               <h2 className="text-2xl font-bold">All done for today.</h2>
               <p className="text-sm text-muted-foreground">Great work. See you tomorrow.</p>
             </div>
-            <Button className="w-full rounded-full" size="lg" onClick={() => setScreen("hidden")}>
+            <Button
+              className="w-full rounded-full"
+              size="lg"
+              onClick={() => { setScreen("hidden"); router.refresh() }}
+            >
               Close
             </Button>
           </div>

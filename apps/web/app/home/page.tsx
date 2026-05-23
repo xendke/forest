@@ -1,16 +1,19 @@
-import Link from "next/link"
 import { redirect } from "next/navigation"
 import type { Metadata } from "next"
 import { getServerToken } from "@/lib/auth"
 import { serverGql } from "@/lib/api.server"
 import { QuizModal } from "@/components/QuizModal"
+import { AppHeader } from "@/components/AppHeader"
+import { WellbeingCard } from "@/components/WellbeingCard"
+import { CheckInCard } from "@/components/CheckInCard"
 import type { DailyQuiz } from "@/types/quiz"
 
 export const metadata: Metadata = {
   title: "Home — Forest",
 }
 
-const TODAY_QUIZ_QUERY = `query {
+const HOME_QUERY = `query {
+  me { firstName }
   todayQuiz {
     id completed skipped
     questions { id text category type options }
@@ -18,55 +21,102 @@ const TODAY_QUIZ_QUERY = `query {
   }
 }`
 
+type HomeData = {
+  me: { firstName: string | null } | null
+  todayQuiz: DailyQuiz | null
+}
+
+function getGreeting() {
+  const hour = new Date().getUTCHours()
+  if (hour >= 5 && hour < 12) return "Good morning"
+  if (hour >= 12 && hour < 17) return "Good afternoon"
+  if (hour >= 17 && hour < 22) return "Good evening"
+  return "Good night"
+}
+
+function getFormattedDate() {
+  const now = new Date()
+  const day = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })
+  const date = now.toLocaleDateString("en-US", {
+    month: "long",
+    day: "numeric",
+    year: "numeric",
+    timeZone: "UTC",
+  })
+  return { day, date }
+}
+
 export default async function HomePage() {
   if (!getServerToken()) redirect("/")
 
+  let me: { firstName: string | null } | null = null
   let initialQuiz: DailyQuiz | null = null
+
   try {
-    const data = await serverGql<{ todayQuiz: DailyQuiz | null }>(TODAY_QUIZ_QUERY)
+    const data = await serverGql<HomeData>(HOME_QUERY)
+    me = data.me
     initialQuiz = data.todayQuiz
   } catch {
-    // Quiz fetch failed — modal will stay hidden
+    // Fetch failed — page will render with placeholder data
   }
+
+  const greeting = getGreeting()
+  const firstName = me?.firstName
+  const { day, date } = getFormattedDate()
 
   return (
     <>
       <QuizModal initialQuiz={initialQuiz} />
 
-      <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
-        <div
-          className="absolute inset-0 pointer-events-none"
-          style={{
-            background:
-              "radial-gradient(ellipse 70% 50% at 50% 40%, hsl(138 50% 8% / 0.8) 0%, transparent 70%)",
-          }}
-        />
+      <div
+        className="min-h-screen"
+        style={{
+          background: `
+            radial-gradient(900px 600px at 12% -10%, rgba(34,192,106,0.18), transparent 60%),
+            radial-gradient(1200px 700px at 110% 10%, rgba(34,192,106,0.10), transparent 55%),
+            radial-gradient(800px 500px at 50% 110%, rgba(34,192,106,0.08), transparent 60%),
+            #050807
+          `,
+        }}
+      >
+        <AppHeader firstName={firstName} />
 
-        <div className="relative z-10 text-center space-y-6 max-w-md">
-          <div className="flex justify-center">
-            <div
-              className="w-3 h-3 rounded-full bg-primary"
-              style={{ boxShadow: "0 0 20px 5px hsl(142 65% 55% / 0.4)" }}
-            />
+        <main className="max-w-[1280px] mx-auto px-7 pb-20">
+          {/* Greeting */}
+          <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mt-[42px] mb-[26px] gap-4">
+            <div>
+              <h1 className="text-[34px] font-bold tracking-[-0.03em] leading-tight">
+                {greeting},{" "}
+                <em className="not-italic" style={{ color: "#3ee07f" }}>
+                  {firstName ?? "there"}
+                </em>
+                .
+              </h1>
+              <p className="mt-2 text-[14.5px] leading-[1.55] max-w-[520px]" style={{ color: "rgba(154,168,160,1)" }}>
+                {initialQuiz?.completed
+                  ? "Check-in complete for today. See you again tomorrow."
+                  : initialQuiz?.skipped
+                  ? "You skipped today's check-in. No worries — see you tomorrow."
+                  : "Your daily check-in is ready when you are."}
+              </p>
+            </div>
+            <div className="text-right flex-shrink-0">
+              <div
+                className="text-[12px] uppercase tracking-[0.04em]"
+                style={{ fontFamily: "monospace", color: "rgba(95,109,101,1)" }}
+              >
+                {day}
+              </div>
+              <div className="text-[16px] font-semibold tracking-[-0.01em] mt-1">{date}</div>
+            </div>
           </div>
 
-          <div className="space-y-3">
-            <h1 className="text-4xl font-bold tracking-tight">
-              You&apos;re in.{" "}
-              <span className="text-primary">Welcome.</span>
-            </h1>
-            <p className="text-muted-foreground leading-relaxed">
-              Your dashboard is on its way. You&apos;re at the starting line.
-            </p>
+          {/* Dashboard grid */}
+          <div className="grid grid-cols-12 gap-[18px]">
+            <WellbeingCard />
+            <CheckInCard quiz={initialQuiz} />
           </div>
-
-          <Link
-            href="/logout"
-            className="inline-flex text-sm text-muted-foreground hover:text-foreground transition-colors"
-          >
-            Sign out →
-          </Link>
-        </div>
+        </main>
       </div>
     </>
   )
