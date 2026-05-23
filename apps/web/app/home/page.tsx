@@ -1,6 +1,7 @@
 import Link from "next/link"
 import type { Metadata } from "next"
 import { AuthGuard } from "@/components/AuthGuard"
+import { QuizModal } from "@/components/QuizModal"
 
 export const metadata: Metadata = {
   title: "Home — Forest",
@@ -9,6 +10,7 @@ export const metadata: Metadata = {
 export default function HomePage() {
   return (
     <AuthGuard>
+      <QuizModal />
     <div className="min-h-screen flex flex-col items-center justify-center px-4 relative overflow-hidden">
       <div
         className="absolute inset-0 pointer-events-none"

@@ -8,11 +8,50 @@ datasource db {
 }
 
 model User {
-  id        Int       @id @default(autoincrement())
-  email     String    @unique
-  password  String
-  firstName String?
-  dob       DateTime?
-  createdAt DateTime  @default(now())
-  updatedAt DateTime  @updatedAt
+  id           Int         @id @default(autoincrement())
+  email        String      @unique
+  password     String
+  firstName    String?
+  dob          DateTime?
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  dailyQuizzes DailyQuiz[]
+}
+
+model Question {
+  id           Int            @id @default(autoincrement())
+  text         String
+  category     String
+  type         String
+  isQuick      Boolean
+  options      String[]
+  dailyQuizzes DailyQuiz[]
+  responses    QuizResponse[]
+}
+
+model DailyQuiz {
+  id        Int            @id @default(autoincrement())
+  userId    Int
+  date      String
+  completed Boolean        @default(false)
+  skipped   Boolean        @default(false)
+  createdAt DateTime       @default(now())
+  user      User           @relation(fields: [userId], references: [id])
+  questions Question[]
+  responses QuizResponse[]
+
+  @@unique([userId, date])
+}
+
+model QuizResponse {
+  id         Int       @id @default(autoincrement())
+  quizId     Int
+  questionId Int
+  answer     String?
+  skipped    Boolean   @default(false)
+  createdAt  DateTime  @default(now())
+  quiz       DailyQuiz @relation(fields: [quizId], references: [id])
+  question   Question  @relation(fields: [questionId], references: [id])
+
+  @@unique([quizId, questionId])
 }
