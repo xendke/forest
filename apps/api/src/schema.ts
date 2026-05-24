@@ -5,6 +5,7 @@ export const typeDefs = `
     todayQuiz: DailyQuiz
     quizHistory(days: Int): [DailyQuizHistory!]!
     streakInfo: StreakInfo!
+    journalEntries(limit: Int, offset: Int): [JournalEntry!]!
   }
 
   type Mutation {
@@ -14,6 +15,9 @@ export const typeDefs = `
     submitQuizResponse(quizId: Int!, questionId: Int!, answer: String, skipped: Boolean): QuizResponse!
     completeQuiz(quizId: Int!, skipped: Boolean): DailyQuiz!
     reopenQuiz(quizId: Int!): DailyQuiz!
+    createJournalEntry(content: String!): JournalEntry!
+    updateJournalEntry(id: Int!, content: String!): JournalEntry!
+    deleteJournalEntry(id: Int!): Boolean!
   }
 
   type User {
@@ -70,5 +74,12 @@ export const typeDefs = `
     current: Int!
     best: Int!
     last7: [DayStatus!]!
+  }
+
+  type JournalEntry {
+    id: Int!
+    content: String!
+    createdAt: String!
+    updatedAt: String!
   }
 `

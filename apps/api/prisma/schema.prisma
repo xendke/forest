@@ -8,14 +8,15 @@ datasource db {
 }
 
 model User {
-  id           Int         @id @default(autoincrement())
-  email        String      @unique
-  password     String
-  firstName    String?
-  dob          DateTime?
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  dailyQuizzes DailyQuiz[]
+  id             Int            @id @default(autoincrement())
+  email          String         @unique
+  password       String
+  firstName      String?
+  dob            DateTime?
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  dailyQuizzes   DailyQuiz[]
+  journalEntries JournalEntry[]
 }
 
 model Question {
@@ -54,4 +55,13 @@ model QuizResponse {
   question   Question  @relation(fields: [questionId], references: [id])
 
   @@unique([quizId, questionId])
+}
+
+model JournalEntry {
+  id        Int      @id @default(autoincrement())
+  userId    Int
+  content   String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id])
 }

@@ -170,6 +170,26 @@ export const resolvers = {
       return { current, best, last7 }
     },
 
+    journalEntries: async (
+      _: unknown,
+      { limit = 100, offset = 0 }: { limit?: number; offset?: number },
+      context: MercuriusContext
+    ) => {
+      const userId = getUserId(context)
+      if (!userId) return []
+      const entries = await prisma.journalEntry.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: limit,
+        skip: offset,
+      })
+      return entries.map((e) => ({
+        ...e,
+        createdAt: e.createdAt.toISOString(),
+        updatedAt: e.updatedAt.toISOString(),
+      }))
+    },
+
     todayQuiz: async (_: unknown, __: unknown, context: MercuriusContext) => {
       const userId = getUserId(context)
       if (!userId) return null
@@ -308,6 +328,43 @@ export const resolvers = {
         data: { completed: true, skipped: skipped ?? false },
         include: { questions: { orderBy: { id: 'asc' } }, responses: true },
       })
+    },
+
+    createJournalEntry: async (
+      _: unknown,
+      { content }: { content: string },
+      context: MercuriusContext
+    ) => {
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
+      const entry = await prisma.journalEntry.create({ data: { userId, content } })
+      return { ...entry, createdAt: entry.createdAt.toISOString(), updatedAt: entry.updatedAt.toISOString() }
+    },
+
+    updateJournalEntry: async (
+      _: unknown,
+      { id, content }: { id: number; content: string },
+      context: MercuriusContext
+    ) => {
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
+      const entry = await prisma.journalEntry.findUnique({ where: { id } })
+      if (!entry || entry.userId !== userId) throw new Error('Entry not found')
+      const updated = await prisma.journalEntry.update({ where: { id }, data: { content } })
+      return { ...updated, createdAt: updated.createdAt.toISOString(), updatedAt: updated.updatedAt.toISOString() }
+    },
+
+    deleteJournalEntry: async (
+      _: unknown,
+      { id }: { id: number },
+      context: MercuriusContext
+    ) => {
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
+      const entry = await prisma.journalEntry.findUnique({ where: { id } })
+      if (!entry || entry.userId !== userId) throw new Error('Entry not found')
+      await prisma.journalEntry.delete({ where: { id } })
+      return true
     },
 
     reopenQuiz: async (
