@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "ts-node-dev --respawn src/index.ts",
     "build": "tsc",
-    "start": "prisma migrate deploy && node prisma/seed.js && node dist/index.js",
+    "start": "prisma migrate deploy && node prisma/seed.js && node prisma/seed-history.js && node dist/index.js",
     "postinstall": "prisma generate",
     "seed:history": "node prisma/seed-history.js"
   },
