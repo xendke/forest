@@ -180,7 +180,10 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
       didMountRef.current = true
       return
     }
-    if (!initialQuiz || initialQuiz.completed || initialQuiz.skipped) return
+    if (!initialQuiz || initialQuiz.completed || initialQuiz.skipped) {
+      setScreen("hidden")
+      return
+    }
     setQuiz(initialQuiz)
     setAnswers(initAnswers(initialQuiz))
     setCurrentIndex(0)
