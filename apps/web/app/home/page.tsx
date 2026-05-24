@@ -75,8 +75,8 @@ export default async function HomePage() {
     history     = data.quizHistory  ?? []
     streak      = data.streakInfo   ?? DEFAULT_STREAK
     insights    = data.aiInsights   ?? DEFAULT_INSIGHTS
-  } catch {
-    // Fetch failed — render with empty state
+  } catch (err) {
+    console.error('[home/page] Failed to load dashboard data:', err)
   }
 
   const greeting  = getGreeting()

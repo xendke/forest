@@ -30,8 +30,8 @@ export default async function JournalPage() {
     const data = await serverGql<JournalData>(JOURNAL_QUERY)
     me = data.me
     entries = data.journalEntries ?? []
-  } catch {
-    // Fetch failed — render with empty state
+  } catch (err) {
+    console.error('[home/journal/page] Failed to load journal data:', err)
   }
 
   return (

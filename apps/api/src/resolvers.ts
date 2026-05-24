@@ -196,7 +196,13 @@ export const resolvers = {
       if (!userId) throw new Error('Unauthorized')
 
       // Return cached insights if they are less than 24 hours old
-      const cached = await prisma.aiInsight.findUnique({ where: { userId } })
+      let cached
+      try {
+        cached = await prisma.aiInsight.findUnique({ where: { userId } })
+      } catch (err) {
+        console.error('[aiInsights] DB lookup failed (migration may not have run yet):', err)
+        return { items: PLACEHOLDER_INSIGHTS, generatedAt: null, isExample: true }
+      }
       if (cached) {
         const ageHours = (Date.now() - cached.generatedAt.getTime()) / 3_600_000
         if (ageHours < 24) {
@@ -213,7 +219,10 @@ export const resolvers = {
       thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30)
       const sinceDate = thirtyDaysAgo.toISOString().split('T')[0]
 
-      const [quizzes, journalEntries] = await Promise.all([
+      let quizzes: Awaited<ReturnType<typeof prisma.dailyQuiz.findMany>>
+      let journalEntries: Array<{ createdAt: Date; content: string }>
+      try {
+        ;[quizzes, journalEntries] = await Promise.all([
         prisma.dailyQuiz.findMany({
           where: { userId, completed: true, skipped: false, date: { gte: sinceDate } },
           include: {
@@ -228,7 +237,11 @@ export const resolvers = {
           take: 30,
           select: { createdAt: true, content: true },
         }),
-      ])
+        ])
+      } catch (err) {
+        console.error('[aiInsights] Failed to fetch user data:', err)
+        return { items: PLACEHOLDER_INSIGHTS, generatedAt: null, isExample: true }
+      }
 
       // Not enough data — return placeholder without calling Claude
       const MIN_ENTRIES = 5
