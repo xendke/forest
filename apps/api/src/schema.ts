@@ -3,6 +3,8 @@ export const typeDefs = `
     hello: String!
     me: User
     todayQuiz: DailyQuiz
+    quizHistory(days: Int): [DailyQuizHistory!]!
+    streakInfo: StreakInfo!
   }
 
   type Mutation {
@@ -49,5 +51,24 @@ export const typeDefs = `
     skipped: Boolean!
     questions: [Question!]!
     responses: [QuizResponse!]!
+  }
+
+  type DailyQuizHistory {
+    date: String!
+    wellbeing: Float
+    mood: Float
+    calm: Float
+    focus: Float
+  }
+
+  type DayStatus {
+    date: String!
+    status: String!
+  }
+
+  type StreakInfo {
+    current: Int!
+    best: Int!
+    last7: [DayStatus!]!
   }
 `

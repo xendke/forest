@@ -6,7 +6,8 @@ import { QuizModal } from "@/components/QuizModal"
 import { Navbar } from "@/components/Navbar"
 import { WellbeingCard } from "@/components/WellbeingCard"
 import { CheckInCard } from "@/components/CheckInCard"
-import type { DailyQuiz } from "@/types/quiz"
+import { StreakCard } from "@/components/StreakCard"
+import type { DailyQuiz, QuizHistoryEntry, StreakInfo } from "@/types/quiz"
 
 export const metadata: Metadata = {
   title: "Home — Forest",
@@ -19,12 +20,18 @@ const HOME_QUERY = `query {
     questions { id text category type options }
     responses { questionId answer skipped }
   }
+  quizHistory(days: 30) { date wellbeing mood calm focus }
+  streakInfo { current best last7 { date status } }
 }`
 
 type HomeData = {
   me: { firstName: string | null } | null
   todayQuiz: DailyQuiz | null
+  quizHistory: QuizHistoryEntry[]
+  streakInfo: StreakInfo
 }
+
+const DEFAULT_STREAK: StreakInfo = { current: 0, best: 0, last7: [] }
 
 function getGreeting() {
   const hour = new Date().getUTCHours()
@@ -36,12 +43,9 @@ function getGreeting() {
 
 function getFormattedDate() {
   const now = new Date()
-  const day = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })
+  const day  = now.toLocaleDateString("en-US", { weekday: "long", timeZone: "UTC" })
   const date = now.toLocaleDateString("en-US", {
-    month: "long",
-    day: "numeric",
-    year: "numeric",
-    timeZone: "UTC",
+    month: "long", day: "numeric", year: "numeric", timeZone: "UTC",
   })
   return { day, date }
 }
@@ -51,16 +55,20 @@ export default async function HomePage() {
 
   let me: { firstName: string | null } | null = null
   let initialQuiz: DailyQuiz | null = null
+  let history: QuizHistoryEntry[] = []
+  let streak: StreakInfo = DEFAULT_STREAK
 
   try {
     const data = await serverGql<HomeData>(HOME_QUERY)
-    me = data.me
-    initialQuiz = data.todayQuiz
+    me           = data.me
+    initialQuiz  = data.todayQuiz
+    history      = data.quizHistory   ?? []
+    streak       = data.streakInfo    ?? DEFAULT_STREAK
   } catch {
-    // Fetch failed — page will render with placeholder data
+    // Fetch failed — render with empty state
   }
 
-  const greeting = getGreeting()
+  const greeting  = getGreeting()
   const firstName = me?.firstName
   const { day, date } = getFormattedDate()
 
@@ -81,7 +89,7 @@ export default async function HomePage() {
       >
         <Navbar variant="app" firstName={firstName} />
 
-        <main className="max-w-[1280px] mx-auto px-7 pb-20">
+        <main className="max-w-[1280px] mx-auto px-4 sm:px-7 pb-20">
           {/* Greeting */}
           <div className="flex flex-col sm:flex-row sm:justify-between sm:items-end mt-[42px] mb-[26px] gap-4">
             <div>
@@ -92,7 +100,10 @@ export default async function HomePage() {
                 </em>
                 .
               </h1>
-              <p className="mt-2 text-[14.5px] leading-[1.55] max-w-[520px]" style={{ color: "rgba(154,168,160,1)" }}>
+              <p
+                className="mt-2 text-[14.5px] leading-[1.55] max-w-[520px]"
+                style={{ color: "rgba(154,168,160,1)" }}
+              >
                 {initialQuiz?.completed
                   ? "Check-in complete for today. See you again tomorrow."
                   : initialQuiz?.skipped
@@ -113,8 +124,9 @@ export default async function HomePage() {
 
           {/* Dashboard grid */}
           <div className="grid grid-cols-12 gap-[18px]">
-            <WellbeingCard />
+            <WellbeingCard history={history} />
             <CheckInCard quiz={initialQuiz} />
+            <StreakCard streak={streak} />
           </div>
         </main>
       </div>

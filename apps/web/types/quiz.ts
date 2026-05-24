@@ -21,3 +21,24 @@ export interface DailyQuiz {
   questions: Question[]
   responses: QuizResponse[]
 }
+
+export interface QuizHistoryEntry {
+  date: string
+  wellbeing: number | null
+  mood: number | null
+  calm: number | null
+  focus: number | null
+}
+
+export type DayStatusType = 'completed' | 'skipped' | 'missed' | 'today'
+
+export interface DayStatus {
+  date: string
+  status: DayStatusType
+}
+
+export interface StreakInfo {
+  current: number
+  best: number
+  last7: DayStatus[]
+}

@@ -54,6 +54,122 @@ export const resolvers = {
       return user ? serializeUser(user) : null
     },
 
+    quizHistory: async (
+      _: unknown,
+      { days = 30 }: { days?: number },
+      context: MercuriusContext
+    ) => {
+      const userId = getUserId(context)
+      if (!userId) return []
+
+      // Build oldest-first date array for the requested window
+      const dates: string[] = []
+      for (let i = days - 1; i >= 0; i--) {
+        const d = new Date()
+        d.setUTCDate(d.getUTCDate() - i)
+        dates.push(d.toISOString().split('T')[0])
+      }
+
+      const quizzes = await prisma.dailyQuiz.findMany({
+        where: { userId, date: { in: dates }, completed: true, skipped: false },
+        include: {
+          questions: { where: { type: 'scale', isQuick: true } },
+          responses: true,
+        },
+      })
+
+      const byDate = new Map(quizzes.map((q) => [q.date, q]))
+
+      return dates.map((date) => {
+        const quiz = byDate.get(date)
+        if (!quiz) return { date, wellbeing: null, mood: null, calm: null, focus: null }
+
+        const getScale = (category: string): number | null => {
+          const q = quiz.questions.find((q) => q.category === category)
+          if (!q) return null
+          const r = quiz.responses.find((r) => r.questionId === q.id)
+          return r?.answer != null ? parseFloat(r.answer) : null
+        }
+
+        const mood    = getScale('Mood')
+        const anxiety = getScale('Anxiety')
+        const focus   = getScale('Focus')
+        const calm    = anxiety != null ? 6 - anxiety : null
+
+        const wellbeing =
+          mood != null && calm != null && focus != null
+            ? Math.round(((mood / 5) + (calm / 5) + (focus / 5)) / 3 * 1000) / 10
+            : null
+
+        return { date, wellbeing, mood, calm, focus }
+      })
+    },
+
+    streakInfo: async (_: unknown, __: unknown, context: MercuriusContext) => {
+      const userId = getUserId(context)
+      if (!userId) return { current: 0, best: 0, last7: [] }
+
+      const today = todayUTC()
+
+      const quizzes = await prisma.dailyQuiz.findMany({
+        where: { userId },
+        orderBy: { date: 'asc' },
+        select: { date: true, completed: true, skipped: true },
+      })
+
+      const byDate = new Map(quizzes.map((q) => [q.date, q]))
+
+      // Current streak: walk backward from today
+      const todayQuiz = byDate.get(today)
+      const todayDone = !!(todayQuiz?.completed && !todayQuiz?.skipped)
+      let current = 0
+      for (let i = todayDone ? 0 : 1; i < 365; i++) {
+        const d = new Date()
+        d.setUTCDate(d.getUTCDate() - i)
+        const dateStr = d.toISOString().split('T')[0]
+        const q = byDate.get(dateStr)
+        if (!q || !q.completed || q.skipped) break
+        current++
+      }
+
+      // Best streak: longest consecutive completed run in full history
+      const completedDates = quizzes
+        .filter((q) => q.completed && !q.skipped)
+        .map((q) => q.date) // already sorted asc
+
+      let best = completedDates.length > 0 ? 1 : 0
+      let run  = completedDates.length > 0 ? 1 : 0
+      for (let i = 1; i < completedDates.length; i++) {
+        const diff = Math.round(
+          (new Date(completedDates[i] + 'T00:00:00Z').getTime() -
+            new Date(completedDates[i - 1] + 'T00:00:00Z').getTime()) / 86400000
+        )
+        if (diff === 1) {
+          run++
+          if (run > best) best = run
+        } else {
+          run = 1
+        }
+      }
+      best = Math.max(best, current)
+
+      // Last 7 days status (oldest first)
+      const last7 = Array.from({ length: 7 }, (_, i) => {
+        const d = new Date()
+        d.setUTCDate(d.getUTCDate() - (6 - i))
+        const dateStr = d.toISOString().split('T')[0]
+        const q = byDate.get(dateStr)
+        const status =
+          dateStr === today ? 'today'
+          : !q              ? 'missed'
+          : q.completed && !q.skipped ? 'completed'
+          : 'skipped'
+        return { date: dateStr, status }
+      })
+
+      return { current, best, last7 }
+    },
+
     todayQuiz: async (_: unknown, __: unknown, context: MercuriusContext) => {
       const userId = getUserId(context)
       if (!userId) return null

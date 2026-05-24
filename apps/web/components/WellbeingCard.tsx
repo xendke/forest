@@ -1,47 +1,101 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useMemo } from "react"
+import type { QuizHistoryEntry } from "@/types/quiz"
 
-const DIMENSIONS = {
+// ── chart math ─────────────────────────────────────────────────────────────
+
+function valueToY(v: number, lo: number, hi: number): number {
+  return Math.max(40, Math.min(240, 220 - ((v - lo) / (hi - lo)) * 180))
+}
+
+function computePaths(
+  entries: QuizHistoryEntry[],
+  getValue: (e: QuizHistoryEntry) => number | null,
+  lo: number,
+  hi: number
+) {
+  const n = entries.length
+  if (n < 2) return null
+
+  const pts: { x: number; y: number }[] = []
+  entries.forEach((e, i) => {
+    const v = getValue(e)
+    if (v === null) return
+    pts.push({ x: (i / (n - 1)) * 720, y: valueToY(v, lo, hi) })
+  })
+  if (pts.length < 2) return null
+
+  let line = `M${pts[0].x.toFixed(1)},${pts[0].y.toFixed(1)}`
+  for (let i = 0; i < pts.length - 1; i++) {
+    const p0 = pts[i], p1 = pts[i + 1]
+    const cx = (p1.x - p0.x) * 0.45
+    line += ` C${(p0.x + cx).toFixed(1)},${p0.y.toFixed(1)} ${(p1.x - cx).toFixed(1)},${p1.y.toFixed(1)} ${p1.x.toFixed(1)},${p1.y.toFixed(1)}`
+  }
+
+  const first = pts[0], last = pts[pts.length - 1]
+  const area = `${line} L${last.x.toFixed(1)},240 L${first.x.toFixed(1)},240 Z`
+  return { line, area, todayX: last.x, todayY: last.y }
+}
+
+function xLabels(entries: QuizHistoryEntry[]) {
+  if (entries.length < 2) return []
+  const n = entries.length
+  const today = new Date().toISOString().split("T")[0]
+  const idxs = [0, Math.round(n * 0.25), Math.round(n * 0.5), Math.round(n * 0.75), n - 1]
+  return idxs.map((i) => ({
+    x: (i / (n - 1)) * 720,
+    label:
+      entries[i].date === today
+        ? "TODAY"
+        : new Date(entries[i].date + "T00:00:00Z")
+            .toLocaleDateString("en-US", { month: "short", day: "numeric", timeZone: "UTC" })
+            .toUpperCase(),
+  }))
+}
+
+// ── dimension config ───────────────────────────────────────────────────────
+
+const DIMS = {
   well: {
     color: "#4ce88a",
-    label: "Composite score · last 14 days",
-    num: "74",
-    unit: "/ 100 weekly avg",
-    delta: "+8 vs prev",
+    label: "Composite score",
+    unit: "/ 100",
     yLabels: ["100", "75", "50", "25"],
-    d: "M0,150 C40,142 70,155 110,135 C150,118 180,128 220,118 C260,108 300,115 330,95 C370,80 400,98 440,78 C480,60 510,78 550,55 C590,48 620,62 660,48 C700,38 720,42 720,42",
+    lo: 25,
+    hi: 100,
+    getValue: (e: QuizHistoryEntry) => e.wellbeing,
   },
   mood: {
     color: "#7ee0a8",
-    label: "Daily mood rating · last 14 days",
-    num: "4.1",
-    unit: "/ 5 weekly avg",
-    delta: "+0.4 vs prev",
+    label: "Daily mood rating",
+    unit: "/ 5",
     yLabels: ["5", "4", "3", "2"],
-    d: "M0,140 C40,128 70,148 110,125 C150,108 180,128 220,115 C260,100 300,118 330,92 C370,75 400,100 440,78 C480,58 510,82 550,52 C590,45 620,68 660,48 C700,36 720,42 720,40",
+    lo: 2,
+    hi: 5,
+    getValue: (e: QuizHistoryEntry) => e.mood,
   },
   calm: {
     color: "#5fd0e0",
-    label: "Daily calm (inverse of anxiety) · last 14 days",
-    num: "3.6",
-    unit: "/ 5 weekly avg",
-    delta: "+0.3 vs prev",
+    label: "Daily calm (inverse of anxiety)",
+    unit: "/ 5",
     yLabels: ["5", "4", "3", "2"],
-    d: "M0,168 C40,178 70,160 110,165 C150,170 180,152 220,148 C260,142 300,150 330,128 C370,118 400,128 440,108 C480,98 510,118 550,90 C590,82 620,98 660,80 C700,72 720,76 720,78",
+    lo: 2,
+    hi: 5,
+    getValue: (e: QuizHistoryEntry) => e.calm,
   },
   focus: {
     color: "#c8b8ff",
-    label: "Daily focus rating · last 14 days",
-    num: "3.8",
-    unit: "/ 5 weekly avg",
-    delta: "+0.2 vs prev",
+    label: "Daily focus rating",
+    unit: "/ 5",
     yLabels: ["5", "4", "3", "2"],
-    d: "M0,128 C40,142 70,118 110,138 C150,152 180,118 220,128 C260,140 300,108 330,118 C370,128 400,90 440,108 C480,118 510,82 550,92 C590,102 620,68 660,80 C700,90 720,75 720,78",
+    lo: 2,
+    hi: 5,
+    getValue: (e: QuizHistoryEntry) => e.focus,
   },
 } as const
 
-type DimKey = keyof typeof DIMENSIONS
+type DimKey = keyof typeof DIMS
 
 const DIM_LABELS: Record<DimKey, string> = {
   well: "Wellbeing",
@@ -51,19 +105,62 @@ const DIM_LABELS: Record<DimKey, string> = {
 }
 
 const RANGES = ["7d", "14d", "30d", "90d"]
+const RANGE_DAYS: Record<string, number> = { "7d": 7, "14d": 14, "30d": 30, "90d": 90 }
 
 function hexToRgba(hex: string, a: number) {
   const n = parseInt(hex.slice(1), 16)
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${a})`
 }
 
-export function WellbeingCard() {
+// ── component ──────────────────────────────────────────────────────────────
+
+interface WellbeingCardProps {
+  history: QuizHistoryEntry[]
+}
+
+export function WellbeingCard({ history }: WellbeingCardProps) {
   const [dim, setDim] = useState<DimKey>("well")
   const [range, setRange] = useState("14d")
 
-  const d = DIMENSIONS[dim]
-  const areaPath = `${d.d} L720,240 L0,240 Z`
-  const todayY = d.d.match(/720,(\d+(?:\.\d+)?)$/)?.[1] ?? "42"
+  const cfg = DIMS[dim]
+
+  const visible = useMemo(() => {
+    const n = RANGE_DAYS[range] ?? history.length
+    return history.slice(-n)
+  }, [history, range])
+
+  const { paths, todayX, todayY, avg, delta } = useMemo(() => {
+    const paths = computePaths(visible, cfg.getValue, cfg.lo, cfg.hi)
+
+    const vals = visible.map((e) => cfg.getValue(e)).filter((v): v is number => v !== null)
+    const avg = vals.length > 0 ? vals.reduce((s, v) => s + v, 0) / vals.length : null
+
+    const prevN = RANGE_DAYS[range] ?? history.length
+    const prevVals = history
+      .slice(-prevN * 2, -prevN)
+      .map((e) => cfg.getValue(e))
+      .filter((v): v is number => v !== null)
+    const prevAvg = prevVals.length > 0 ? prevVals.reduce((s, v) => s + v, 0) / prevVals.length : null
+
+    const delta = avg !== null && prevAvg !== null ? avg - prevAvg : null
+
+    return { paths, todayX: paths?.todayX ?? 680, todayY: paths?.todayY ?? 130, avg, delta }
+  }, [visible, dim, cfg, history, range])
+
+  const labels = useMemo(() => xLabels(visible), [visible])
+
+  const statNum =
+    avg !== null ? (dim === "well" ? Math.round(avg).toString() : avg.toFixed(1)) : "—"
+
+  const deltaStr =
+    delta !== null
+      ? `${delta >= 0 ? "↑ +" : "↓ "}${dim === "well" ? Math.round(Math.abs(delta)) : Math.abs(delta).toFixed(1)} vs prev`
+      : null
+
+  const subLabel = `${cfg.label} · last ${RANGE_DAYS[range] ?? history.length} days`
+
+  const linePath  = paths?.line  ?? ""
+  const areaPath  = paths?.area  ?? ""
 
   return (
     <section
@@ -83,31 +180,26 @@ export function WellbeingCard() {
         }}
       />
       <div className="relative">
+
         {/* Header row */}
         <div className="flex flex-wrap gap-3 justify-between items-start mb-[18px]">
           <div>
-            <div
-              className="text-[13px] font-medium uppercase tracking-[0.02em]"
-              style={{ color: "rgba(154,168,160,1)" }}
-            >
+            <div className="text-[13px] font-medium uppercase tracking-[0.02em]" style={{ color: "rgba(154,168,160,1)" }}>
               Wellbeing
             </div>
             <div className="text-[12px] mt-[2px]" style={{ color: "rgba(95,109,101,1)" }}>
-              {d.label}
+              {subLabel}
             </div>
           </div>
 
           {/* Dimension tabs */}
           <div
             className="inline-flex gap-1 p-1 rounded-xl flex-shrink-0"
-            style={{
-              background: "rgba(255,255,255,0.025)",
-              border: "1px solid rgba(255,255,255,0.06)",
-            }}
+            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
           >
-            {(Object.keys(DIMENSIONS) as DimKey[]).map((key) => {
+            {(Object.keys(DIMS) as DimKey[]).map((key) => {
               const isOn = dim === key
-              const color = DIMENSIONS[key].color
+              const color = DIMS[key].color
               return (
                 <button
                   key={key}
@@ -136,41 +228,34 @@ export function WellbeingCard() {
         {/* Big stat + delta */}
         <div className="flex justify-between items-end mb-2">
           <div className="flex items-baseline gap-[10px]">
-            <span
-              className="text-[54px] font-bold tracking-[-0.04em] leading-none"
-              style={{ color: d.color }}
-            >
-              {d.num}
+            <span className="text-[54px] font-bold tracking-[-0.04em] leading-none" style={{ color: cfg.color }}>
+              {statNum}
             </span>
             <span className="text-[18px] font-medium" style={{ color: "rgba(95,109,101,1)" }}>
-              {d.unit}
+              {cfg.unit}
             </span>
           </div>
-          <span
-            className="inline-flex items-center gap-1.5 text-[11px] font-medium px-[10px] py-[5px] rounded-full"
-            style={{
-              color: d.color,
-              background: hexToRgba(d.color, 0.18),
-              border: `1px solid ${hexToRgba(d.color, 0.18)}`,
-            }}
-          >
-            <span className="text-[10px]">↑</span> {d.delta}
-          </span>
+          {deltaStr && (
+            <span
+              className="inline-flex items-center gap-1.5 text-[11px] font-medium px-[10px] py-[5px] rounded-full"
+              style={{
+                color: cfg.color,
+                background: hexToRgba(cfg.color, 0.18),
+                border: `1px solid ${hexToRgba(cfg.color, 0.18)}`,
+              }}
+            >
+              {deltaStr}
+            </span>
+          )}
         </div>
 
         {/* Chart */}
         <div className="relative mt-[14px]">
-          <svg
-            viewBox="0 0 720 240"
-            width="100%"
-            height="240"
-            preserveAspectRatio="none"
-            aria-hidden="true"
-          >
+          <svg viewBox="0 0 720 240" width="100%" height="240" preserveAspectRatio="none" aria-hidden="true">
             <defs>
               <linearGradient id="wb-area" x1="0" x2="0" y1="0" y2="1">
-                <stop offset="0%" stopColor={d.color} stopOpacity={0.42} />
-                <stop offset="100%" stopColor={d.color} stopOpacity={0} />
+                <stop offset="0%" stopColor={cfg.color} stopOpacity={0.38} />
+                <stop offset="100%" stopColor={cfg.color} stopOpacity={0} />
               </linearGradient>
               <filter id="wb-glow">
                 <feGaussianBlur stdDeviation="3" />
@@ -179,7 +264,7 @@ export function WellbeingCard() {
 
             {/* Grid lines */}
             <g stroke="rgba(255,255,255,0.05)" strokeDasharray="2 6">
-              <line x1="0" x2="720" y1="40" y2="40" />
+              <line x1="0" x2="720" y1="40"  y2="40"  />
               <line x1="0" x2="720" y1="100" y2="100" />
               <line x1="0" x2="720" y1="160" y2="160" />
               <line x1="0" x2="720" y1="220" y2="220" />
@@ -187,59 +272,33 @@ export function WellbeingCard() {
 
             {/* Y-axis labels */}
             <g fill="#5f6d65" fontSize="10" letterSpacing="1">
-              {d.yLabels.map((label, i) => (
-                <text key={i} x="4" y={44 + i * 60} fontFamily="monospace">
-                  {label}
-                </text>
+              {cfg.yLabels.map((label, i) => (
+                <text key={i} x="4" y={44 + i * 60} fontFamily="monospace">{label}</text>
               ))}
             </g>
 
-            {/* Area fill */}
-            <path fill="url(#wb-area)" d={areaPath} />
-
-            {/* Glow line */}
-            <path
-              fill="none"
-              stroke={d.color}
-              strokeWidth="6"
-              strokeLinecap="round"
-              opacity={0.3}
-              filter="url(#wb-glow)"
-              d={d.d}
-            />
-
-            {/* Main line */}
-            <path fill="none" stroke={d.color} strokeWidth="2.5" strokeLinecap="round" d={d.d} />
-
-            {/* Today marker */}
-            <line
-              x1="700"
-              x2="700"
-              y1="20"
-              y2="220"
-              stroke="rgba(62,224,127,0.4)"
-              strokeDasharray="3 4"
-            />
-            <circle cx="700" cy={todayY} r="11" fill={hexToRgba(d.color, 0.18)} />
-            <circle cx="700" cy={todayY} r="5" fill="#0a1410" stroke={d.color} strokeWidth="2.5" />
+            {linePath ? (
+              <>
+                <path fill="url(#wb-area)" d={areaPath} />
+                <path fill="none" stroke={cfg.color} strokeWidth="6" strokeLinecap="round" opacity={0.25} filter="url(#wb-glow)" d={linePath} />
+                <path fill="none" stroke={cfg.color} strokeWidth="2.5" strokeLinecap="round" d={linePath} />
+                <line x1={todayX.toFixed(1)} x2={todayX.toFixed(1)} y1="20" y2="220" stroke="rgba(62,224,127,0.35)" strokeDasharray="3 4" />
+                <circle cx={todayX.toFixed(1)} cy={todayY.toFixed(1)} r="11" fill={hexToRgba(cfg.color, 0.18)} />
+                <circle cx={todayX.toFixed(1)} cy={todayY.toFixed(1)} r="5"  fill="#0a1410" stroke={cfg.color} strokeWidth="2.5" />
+              </>
+            ) : (
+              <text x="360" y="125" textAnchor="middle" fill="#5f6d65" fontSize="12" fontFamily="monospace">
+                No data yet
+              </text>
+            )}
 
             {/* X-axis labels */}
             <g fill="#5f6d65" fontSize="10" letterSpacing="1.2">
-              <text x="34" y="237" fontFamily="monospace">
-                MAY 09
-              </text>
-              <text x="180" y="237" fontFamily="monospace">
-                MAY 13
-              </text>
-              <text x="345" y="237" fontFamily="monospace">
-                MAY 16
-              </text>
-              <text x="510" y="237" fontFamily="monospace">
-                MAY 19
-              </text>
-              <text x="664" y="237" fontFamily="monospace">
-                TODAY
-              </text>
+              {labels.map(({ x, label }) => (
+                <text key={label} x={x.toFixed(1)} y="237" fontFamily="monospace" textAnchor="middle">
+                  {label}
+                </text>
+              ))}
             </g>
           </svg>
 
@@ -256,9 +315,7 @@ export function WellbeingCard() {
                     fontFamily: "monospace",
                     letterSpacing: "0.1em",
                     color: isOn ? "#3ee07f" : "#5f6d65",
-                    border: isOn
-                      ? "1px solid rgba(62,224,127,0.4)"
-                      : "1px solid rgba(255,255,255,0.06)",
+                    border: isOn ? "1px solid rgba(62,224,127,0.4)" : "1px solid rgba(255,255,255,0.06)",
                     background: isOn ? "rgba(62,224,127,0.06)" : "transparent",
                   }}
                 >
