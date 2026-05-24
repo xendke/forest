@@ -2,6 +2,7 @@ import bcrypt from 'bcrypt'
 import type { MercuriusContext } from 'mercurius'
 import { prisma } from './prisma'
 import { signToken, verifyToken } from './auth'
+import { generateInsights, PLACEHOLDER_INSIGHTS } from './ai'
 
 declare module 'mercurius' {
   interface MercuriusContext {
@@ -188,6 +189,107 @@ export const resolvers = {
         createdAt: e.createdAt.toISOString(),
         updatedAt: e.updatedAt.toISOString(),
       }))
+    },
+
+    aiInsights: async (_: unknown, __: unknown, context: MercuriusContext) => {
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
+
+      // Return cached insights if they are less than 24 hours old
+      const cached = await prisma.aiInsight.findUnique({ where: { userId } })
+      if (cached) {
+        const ageHours = (Date.now() - cached.generatedAt.getTime()) / 3_600_000
+        if (ageHours < 24) {
+          return {
+            items: cached.insights,
+            generatedAt: cached.generatedAt.toISOString(),
+            isExample: cached.isExample,
+          }
+        }
+      }
+
+      // Gather the last 30 days of completed quiz data
+      const thirtyDaysAgo = new Date()
+      thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30)
+      const sinceDate = thirtyDaysAgo.toISOString().split('T')[0]
+
+      const [quizzes, journalEntries] = await Promise.all([
+        prisma.dailyQuiz.findMany({
+          where: { userId, completed: true, skipped: false, date: { gte: sinceDate } },
+          include: {
+            questions: { where: { type: 'scale', isQuick: true } },
+            responses: true,
+          },
+          orderBy: { date: 'asc' },
+        }),
+        prisma.journalEntry.findMany({
+          where: { userId },
+          orderBy: { createdAt: 'desc' },
+          take: 30,
+          select: { createdAt: true, content: true },
+        }),
+      ])
+
+      // Not enough data — return placeholder without calling Claude
+      const MIN_ENTRIES = 5
+      if (quizzes.length < MIN_ENTRIES) {
+        await prisma.aiInsight.upsert({
+          where: { userId },
+          update: { insights: PLACEHOLDER_INSIGHTS, isExample: true, generatedAt: new Date() },
+          create: { userId, insights: PLACEHOLDER_INSIGHTS, isExample: true },
+        })
+        return { items: PLACEHOLDER_INSIGHTS, generatedAt: new Date().toISOString(), isExample: true }
+      }
+
+      // Build compact quiz score array for the prompt
+      const getScale = (quiz: typeof quizzes[0], category: string) => {
+        const q = quiz.questions.find((q) => q.category === category)
+        if (!q) return null
+        const r = quiz.responses.find((r) => r.questionId === q.id)
+        return r?.answer != null ? parseFloat(r.answer) : null
+      }
+
+      const quizData = quizzes.map((quiz) => ({
+        date: quiz.date,
+        mood: getScale(quiz, 'Mood'),
+        anxiety: getScale(quiz, 'Anxiety'),
+        focus: getScale(quiz, 'Focus'),
+      })).filter((d) => d.mood !== null)
+
+      const journalData = journalEntries.map((e) => ({
+        date: e.createdAt.toISOString().split('T')[0],
+        content: e.content,
+      }))
+
+      // Call Claude; fall back to placeholder if anything goes wrong
+      let insights = PLACEHOLDER_INSIGHTS
+      let isExample = true
+      try {
+        insights = await generateInsights(
+          quizData as Array<{ date: string; mood: number; anxiety: number; focus: number }>,
+          journalData
+        )
+        isExample = false
+      } catch (err) {
+        console.error('AI insights generation failed:', err)
+        // Use stale cached data if available, otherwise placeholder
+        if (cached) {
+          return {
+            items: cached.insights,
+            generatedAt: cached.generatedAt.toISOString(),
+            isExample: cached.isExample,
+          }
+        }
+      }
+
+      const now = new Date()
+      await prisma.aiInsight.upsert({
+        where: { userId },
+        update: { insights, isExample, generatedAt: now },
+        create: { userId, insights, isExample },
+      })
+
+      return { items: insights, generatedAt: now.toISOString(), isExample }
     },
 
     todayQuiz: async (_: unknown, __: unknown, context: MercuriusContext) => {

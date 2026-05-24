@@ -7,7 +7,9 @@ import { Navbar } from "@/components/Navbar"
 import { WellbeingCard } from "@/components/WellbeingCard"
 import { CheckInCard } from "@/components/CheckInCard"
 import { StreakCard } from "@/components/StreakCard"
+import { AiInsightCard } from "@/components/AiInsightCard"
 import type { DailyQuiz, QuizHistoryEntry, StreakInfo } from "@/types/quiz"
+import type { AiInsightsResult } from "@/types/insights"
 
 export const metadata: Metadata = {
   title: "Home — Forest",
@@ -22,6 +24,7 @@ const HOME_QUERY = `query {
   }
   quizHistory(days: 30) { date wellbeing mood calm focus }
   streakInfo { current best last7 { date status } }
+  aiInsights { items { type emoji insight } generatedAt isExample }
 }`
 
 type HomeData = {
@@ -29,9 +32,15 @@ type HomeData = {
   todayQuiz: DailyQuiz | null
   quizHistory: QuizHistoryEntry[]
   streakInfo: StreakInfo
+  aiInsights: AiInsightsResult
 }
 
 const DEFAULT_STREAK: StreakInfo = { current: 0, best: 0, last7: [] }
+const DEFAULT_INSIGHTS: AiInsightsResult = {
+  items: [],
+  generatedAt: null,
+  isExample: true,
+}
 
 function getGreeting() {
   const hour = new Date().getUTCHours()
@@ -57,13 +66,15 @@ export default async function HomePage() {
   let initialQuiz: DailyQuiz | null = null
   let history: QuizHistoryEntry[] = []
   let streak: StreakInfo = DEFAULT_STREAK
+  let insights: AiInsightsResult = DEFAULT_INSIGHTS
 
   try {
     const data = await serverGql<HomeData>(HOME_QUERY)
-    me           = data.me
-    initialQuiz  = data.todayQuiz
-    history      = data.quizHistory   ?? []
-    streak       = data.streakInfo    ?? DEFAULT_STREAK
+    me          = data.me
+    initialQuiz = data.todayQuiz
+    history     = data.quizHistory  ?? []
+    streak      = data.streakInfo   ?? DEFAULT_STREAK
+    insights    = data.aiInsights   ?? DEFAULT_INSIGHTS
   } catch {
     // Fetch failed — render with empty state
   }
@@ -127,6 +138,7 @@ export default async function HomePage() {
             <WellbeingCard history={history} />
             <CheckInCard quiz={initialQuiz} />
             <StreakCard streak={streak} />
+            <AiInsightCard data={insights} />
           </div>
         </main>
       </div>
