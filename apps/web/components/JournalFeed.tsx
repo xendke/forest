@@ -1,7 +1,8 @@
 "use client"
 
+import type React from "react"
 import { useState, useRef, useEffect } from "react"
-import { Pencil, Trash2, Plus, X, Check } from "lucide-react"
+import { Pencil, Trash2, Plus, X, Check, Sparkles, RefreshCw } from "lucide-react"
 import { gql } from "@/lib/api"
 import type { JournalEntry } from "@/types/journal"
 
@@ -15,6 +16,27 @@ const DELETE_ENTRY = `mutation DeleteJournalEntry($id: Int!) {
   deleteJournalEntry(id: $id)
 }`
 
+const PROMPTS = [
+  "What's the biggest thing on your mind right now?",
+  "Describe your mood today in a few words.",
+  "What was the highlight of your day, if any?",
+  "Was there a moment today that felt overwhelming?",
+  "What got in the way of your focus today?",
+  "Is there anything you're dreading or looking forward to?",
+  "What's one thing you did today that you're proud of, however small?",
+  "What task felt hardest to get started on today?",
+  "What are you grateful for right now?",
+  "What would make tomorrow better than today?",
+  "How are you actually doing, underneath it all?",
+  "What are you avoiding, and why?",
+  "What do you need right now that you're not getting?",
+  "What's something you've been overthinking?",
+  "If you had to describe your week in one word, what would it be?",
+  "What conversation do you keep putting off?",
+  "What's draining your energy the most lately?",
+  "What would you tell a close friend going through the same thing?",
+]
+
 function formatDate(iso: string): string {
   const d = new Date(iso)
   const now = new Date()
@@ -23,9 +45,7 @@ function formatDate(iso: string): string {
   const time = d.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })
   if (d.toDateString() === now.toDateString()) return `Today · ${time}`
   if (d.toDateString() === yd.toDateString()) return `Yesterday · ${time}`
-  return (
-    d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ` · ${time}`
-  )
+  return d.toLocaleDateString("en-US", { month: "short", day: "numeric" }) + ` · ${time}`
 }
 
 const cardStyle = {
@@ -186,9 +206,35 @@ export function JournalFeed({ initialEntries }: JournalFeedProps) {
   const [submitting, setSubmitting] = useState(false)
   const composerRef = useRef<HTMLTextAreaElement>(null)
 
+  // Prompt shuffle state
+  const [promptIdx, setPromptIdx] = useState(0)
+  const [promptVisible, setPromptVisible] = useState(true)
+
   useEffect(() => {
-    if (composerOpen && composerRef.current) composerRef.current.focus()
+    if (composerOpen) {
+      composerRef.current?.focus()
+      // Pick a fresh random prompt each time the composer opens
+      setPromptIdx(Math.floor(Math.random() * PROMPTS.length))
+      setPromptVisible(true)
+    }
   }, [composerOpen])
+
+  const shufflePrompt = () => {
+    setPromptVisible(false)
+    setTimeout(() => {
+      setPromptIdx((i) => {
+        let next = Math.floor(Math.random() * PROMPTS.length)
+        if (next === i) next = (i + 1) % PROMPTS.length
+        return next
+      })
+      setPromptVisible(true)
+    }, 140)
+  }
+
+  const usePrompt = () => {
+    if (!composerText) setComposerText(PROMPTS[promptIdx])
+    composerRef.current?.focus()
+  }
 
   const submit = async () => {
     const trimmed = composerText.trim()
@@ -209,7 +255,7 @@ export function JournalFeed({ initialEntries }: JournalFeedProps) {
   const closeComposer = () => { setComposerOpen(false); setComposerText("") }
 
   return (
-    <div className="max-w-[720px]">
+    <div>
       {/* Composer */}
       {composerOpen ? (
         <div className="rounded-[18px] p-[22px] mb-5 relative overflow-hidden" style={cardStyle}>
@@ -220,6 +266,41 @@ export function JournalFeed({ initialEntries }: JournalFeedProps) {
             }}
           />
           <div className="relative">
+            {/* Writing prompt */}
+            <div
+              className="flex items-center gap-2 mb-4 px-3 py-2 rounded-xl"
+              style={{
+                background: "rgba(62,224,127,0.055)",
+                border: "1px solid rgba(62,224,127,0.12)",
+              }}
+            >
+              <Sparkles
+                className="w-3.5 h-3.5 flex-shrink-0"
+                style={{ color: "rgba(62,224,127,0.7)" }}
+              />
+              <button
+                onClick={usePrompt}
+                className="flex-1 text-left text-[12.5px] leading-[1.5] transition-opacity"
+                style={{
+                  color: "rgba(154,168,160,0.85)",
+                  opacity: promptVisible ? 1 : 0,
+                  transition: "opacity 140ms ease",
+                }}
+                title="Click to use this prompt"
+              >
+                {PROMPTS[promptIdx]}
+              </button>
+              <button
+                onClick={shufflePrompt}
+                className="p-1 rounded-lg flex-shrink-0 transition-colors hover:bg-white/[0.06]"
+                style={{ color: "rgba(62,224,127,0.6)" }}
+                aria-label="Shuffle prompt"
+              >
+                <RefreshCw className="w-3 h-3" />
+              </button>
+            </div>
+
+            {/* Timestamp */}
             <div
               className="text-[11px] mb-3"
               style={{ fontFamily: "monospace", color: "rgba(95,109,101,1)" }}
@@ -228,6 +309,8 @@ export function JournalFeed({ initialEntries }: JournalFeedProps) {
               {" · "}
               {new Date().toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" })}
             </div>
+
+            {/* Textarea */}
             <textarea
               ref={composerRef}
               value={composerText}
