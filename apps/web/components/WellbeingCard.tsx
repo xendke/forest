@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useMemo } from "react"
+import { useState, useMemo, useRef, useEffect } from "react"
 import type { QuizHistoryEntry } from "@/types/quiz"
 
 // ── chart math ─────────────────────────────────────────────────────────────
@@ -121,6 +121,17 @@ interface WellbeingCardProps {
 export function WellbeingCard({ history }: WellbeingCardProps) {
   const [dim, setDim] = useState<DimKey>("well")
   const [range, setRange] = useState("14d")
+  const [dimOpen, setDimOpen] = useState(false)
+  const dimRef = useRef<HTMLDivElement>(null)
+
+  useEffect(() => {
+    if (!dimOpen) return
+    const handler = (e: MouseEvent) => {
+      if (dimRef.current && !dimRef.current.contains(e.target as Node)) setDimOpen(false)
+    }
+    document.addEventListener("mousedown", handler)
+    return () => document.removeEventListener("mousedown", handler)
+  }, [dimOpen])
 
   const cfg = DIMS[dim]
 
@@ -192,36 +203,92 @@ export function WellbeingCard({ history }: WellbeingCardProps) {
             </div>
           </div>
 
-          {/* Dimension tabs */}
-          <div
-            className="inline-flex gap-1 p-1 rounded-xl flex-shrink-0"
-            style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
-          >
-            {(Object.keys(DIMS) as DimKey[]).map((key) => {
-              const isOn = dim === key
-              const color = DIMS[key].color
-              return (
-                <button
-                  key={key}
-                  onClick={() => setDim(key)}
-                  className="flex items-center gap-2 px-[14px] py-2 rounded-lg text-[12.5px] font-medium transition-all"
-                  style={{
-                    color: isOn ? color : "rgba(154,168,160,0.8)",
-                    background: isOn ? hexToRgba(color, 0.12) : "transparent",
-                  }}
-                >
-                  <span
-                    className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+          {/* Dimension selector — pill tabs on md+, dropdown on mobile */}
+          <div className="relative flex-shrink-0" ref={dimRef}>
+
+            {/* Mobile dropdown trigger */}
+            <button
+              className="md:hidden flex items-center gap-2 px-[14px] py-2 rounded-xl text-[12.5px] font-medium"
+              style={{
+                color: cfg.color,
+                background: hexToRgba(cfg.color, 0.12),
+                border: "1px solid rgba(255,255,255,0.06)",
+              }}
+              onClick={() => setDimOpen((o) => !o)}
+            >
+              <span
+                className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+                style={{ background: "currentColor", boxShadow: "0 0 8px currentColor" }}
+              />
+              {DIM_LABELS[dim]}
+              <span className={`text-[10px] transition-transform duration-200 ${dimOpen ? "rotate-180" : ""}`}>▾</span>
+            </button>
+
+            {dimOpen && (
+              <div
+                className="md:hidden absolute right-0 top-full mt-2 rounded-xl overflow-hidden z-50 min-w-[140px]"
+                style={{
+                  background: "rgba(10,16,13,0.95)",
+                  backdropFilter: "blur(18px)",
+                  border: "1px solid rgba(255,255,255,0.08)",
+                  boxShadow: "0 16px 40px rgba(0,0,0,0.6)",
+                }}
+              >
+                {(Object.keys(DIMS) as DimKey[]).map((key) => {
+                  const color = DIMS[key].color
+                  const isOn = dim === key
+                  return (
+                    <button
+                      key={key}
+                      onClick={() => { setDim(key); setDimOpen(false) }}
+                      className="flex items-center gap-2 w-full px-4 py-3 text-[13px] font-medium transition-colors text-left"
+                      style={{
+                        color: isOn ? color : "rgba(154,168,160,0.8)",
+                        background: isOn ? hexToRgba(color, 0.10) : "transparent",
+                      }}
+                    >
+                      <span
+                        className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+                        style={{ background: "currentColor", opacity: isOn ? 1 : 0.7 }}
+                      />
+                      {DIM_LABELS[key]}
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+
+            {/* Desktop pill tabs */}
+            <div
+              className="hidden md:inline-flex gap-1 p-1 rounded-xl"
+              style={{ background: "rgba(255,255,255,0.025)", border: "1px solid rgba(255,255,255,0.06)" }}
+            >
+              {(Object.keys(DIMS) as DimKey[]).map((key) => {
+                const isOn = dim === key
+                const color = DIMS[key].color
+                return (
+                  <button
+                    key={key}
+                    onClick={() => setDim(key)}
+                    className="flex items-center gap-2 px-[14px] py-2 rounded-lg text-[12.5px] font-medium transition-all"
                     style={{
-                      background: "currentColor",
-                      opacity: isOn ? 1 : 0.7,
-                      boxShadow: isOn ? "0 0 8px currentColor" : undefined,
+                      color: isOn ? color : "rgba(154,168,160,0.8)",
+                      background: isOn ? hexToRgba(color, 0.12) : "transparent",
                     }}
-                  />
-                  {DIM_LABELS[key]}
-                </button>
-              )
-            })}
+                  >
+                    <span
+                      className="w-[7px] h-[7px] rounded-full flex-shrink-0"
+                      style={{
+                        background: "currentColor",
+                        opacity: isOn ? 1 : 0.7,
+                        boxShadow: isOn ? "0 0 8px currentColor" : undefined,
+                      }}
+                    />
+                    {DIM_LABELS[key]}
+                  </button>
+                )
+              })}
+            </div>
           </div>
         </div>
 
