@@ -1,5 +1,17 @@
-import type React from "react"
+"use client"
+
+import { useState } from "react"
+import { useRouter } from "next/navigation"
+import { gql } from "@/lib/api"
 import type { DailyQuiz } from "@/types/quiz"
+
+const REOPEN_QUIZ = `
+  mutation($quizId: Int!) {
+    reopenQuiz(quizId: $quizId) {
+      id completed skipped
+    }
+  }
+`
 
 const QUICK_LABEL: Record<string, string> = {
   "Did you experience any moments of calm or relief today?": "Moments of calm",
@@ -8,19 +20,22 @@ const QUICK_LABEL: Record<string, string> = {
   "How much did anxious thoughts get in your way today?": "Anxious thoughts",
 }
 
-const cardStyle = {
+const cardStyle: React.CSSProperties = {
   background: "rgba(255,255,255,0.035)",
   border: "1px solid rgba(255,255,255,0.06)",
   backdropFilter: "blur(22px) saturate(140%)",
   WebkitBackdropFilter: "blur(22px) saturate(140%)",
   boxShadow: "inset 0 1px 0 rgba(255,255,255,0.05), 0 30px 60px -40px rgba(0,0,0,0.7)",
-} as React.CSSProperties
+}
 
 interface CheckInCardProps {
   quiz: DailyQuiz | null
 }
 
 export function CheckInCard({ quiz }: CheckInCardProps) {
+  const router = useRouter()
+  const [reopening, setReopening] = useState(false)
+
   const quickQuestions = quiz?.questions.filter((q) => q.type !== "free_text") ?? []
   const scaleQuestions = quickQuestions.filter((q) => q.type === "scale")
   const tagQuestions = quickQuestions.filter(
@@ -32,6 +47,17 @@ export function CheckInCard({ quiz }: CheckInCardProps) {
   }).length
 
   const hasAnswers = quiz?.completed && answeredCount > 0
+
+  const handleReopen = async () => {
+    if (!quiz) return
+    setReopening(true)
+    try {
+      await gql(REOPEN_QUIZ, { quizId: quiz.id })
+      router.refresh()
+    } finally {
+      setReopening(false)
+    }
+  }
 
   return (
     <section
@@ -111,10 +137,7 @@ export function CheckInCard({ quiz }: CheckInCardProps) {
             })}
 
             {/* Divider */}
-            <div
-              className="my-1"
-              style={{ height: "1px", background: "rgba(255,255,255,0.06)" }}
-            />
+            <div className="my-1" style={{ height: "1px", background: "rgba(255,255,255,0.06)" }} />
 
             {/* Tag questions */}
             <div className="flex flex-wrap gap-[6px]">
@@ -145,7 +168,7 @@ export function CheckInCard({ quiz }: CheckInCardProps) {
           </div>
         ) : (
           <div
-            className="flex flex-col items-center justify-center text-center py-8 gap-3"
+            className="flex flex-col items-center justify-center text-center py-8 gap-4"
             style={{ color: "rgba(95,109,101,1)" }}
           >
             <div
@@ -157,6 +180,20 @@ export function CheckInCard({ quiz }: CheckInCardProps) {
                 ? "You skipped today's check-in."
                 : "Complete your daily check-in to see your results here."}
             </p>
+            {quiz?.skipped && (
+              <button
+                onClick={handleReopen}
+                disabled={reopening}
+                className="text-[12px] font-medium px-4 py-2 rounded-full transition-all"
+                style={{
+                  color: reopening ? "rgba(95,109,101,1)" : "#3ee07f",
+                  background: "rgba(62,224,127,0.08)",
+                  border: "1px solid rgba(62,224,127,0.2)",
+                }}
+              >
+                {reopening ? "Opening…" : "Complete check-in →"}
+              </button>
+            )}
           </div>
         )}
       </div>

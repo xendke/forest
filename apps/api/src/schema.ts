@@ -11,6 +11,7 @@ export const typeDefs = `
     updateProfile(firstName: String, dob: String): User!
     submitQuizResponse(quizId: Int!, questionId: Int!, answer: String, skipped: Boolean): QuizResponse!
     completeQuiz(quizId: Int!, skipped: Boolean): DailyQuiz!
+    reopenQuiz(quizId: Int!): DailyQuiz!
   }
 
   type User {

@@ -1,6 +1,6 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { gql } from "@/lib/api"
@@ -157,10 +157,9 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
   const [answers, setAnswers] = useState<Record<number, string>>(() => initAnswers(initialQuiz))
   const [submitting, setSubmitting] = useState(false)
 
-  // Client-side fallback fetch — only runs when server didn't provide data
+  // Client-side fallback fetch — only runs on mount when server didn't provide data
   useEffect(() => {
     if (initialQuiz !== undefined) return
-
     gql<{ todayQuiz: DailyQuiz | null }>(TODAY_QUIZ)
       .then(({ todayQuiz }) => {
         if (!todayQuiz || todayQuiz.completed || todayQuiz.skipped) {
@@ -172,6 +171,20 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
         setScreen("welcome")
       })
       .catch(() => setScreen("hidden"))
+  }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Respond when initialQuiz prop changes (e.g. after router.refresh() on reopen)
+  const didMountRef = useRef(false)
+  useEffect(() => {
+    if (!didMountRef.current) {
+      didMountRef.current = true
+      return
+    }
+    if (!initialQuiz || initialQuiz.completed || initialQuiz.skipped) return
+    setQuiz(initialQuiz)
+    setAnswers(initAnswers(initialQuiz))
+    setCurrentIndex(0)
+    setScreen("welcome")
   }, [initialQuiz])
 
   const currentQuestion = quiz?.questions[currentIndex] ?? null

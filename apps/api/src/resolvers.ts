@@ -193,5 +193,25 @@ export const resolvers = {
         include: { questions: { orderBy: { id: 'asc' } }, responses: true },
       })
     },
+
+    reopenQuiz: async (
+      _: unknown,
+      { quizId }: { quizId: number },
+      context: MercuriusContext
+    ) => {
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
+
+      const quiz = await prisma.dailyQuiz.findUnique({ where: { id: quizId } })
+      if (!quiz || quiz.userId !== userId) throw new Error('Quiz not found')
+
+      await prisma.quizResponse.deleteMany({ where: { quizId } })
+
+      return prisma.dailyQuiz.update({
+        where: { id: quizId },
+        data: { skipped: false, completed: false },
+        include: { questions: { orderBy: { id: 'asc' } }, responses: true },
+      })
+    },
   },
 }
