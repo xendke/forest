@@ -193,8 +193,8 @@ export function WellbeingCard({ history }: WellbeingCardProps) {
       <div className="relative">
 
         {/* Header row */}
-        <div className="flex flex-wrap gap-3 justify-between items-start mb-[18px]">
-          <div>
+        <div className="flex gap-3 justify-between items-start mb-[18px]">
+          <div className="min-w-0">
             <div className="text-[13px] font-medium uppercase tracking-[0.02em]" style={{ color: "rgba(154,168,160,1)" }}>
               Wellbeing
             </div>
