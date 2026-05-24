@@ -33,20 +33,42 @@ export function Navbar({ variant = "marketing", firstName }: NavbarProps) {
         } mx-auto flex items-center justify-between px-5 py-3 rounded-2xl`}
         style={navStyle}
       >
-        {/* Brand */}
-        <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
-          <div
-            className="w-2.5 h-2.5 rounded-full bg-primary transition-all group-hover:scale-110"
-            style={{ boxShadow: "0 0 10px 2px hsl(142 65% 55% / 0.5)" }}
-          />
-          <span className="font-semibold text-base tracking-tight text-foreground">Forest</span>
-        </Link>
-
-        {/* Center nav */}
         {isApp ? (
-          <NavTabs />
+          /* App: brand + tabs grouped on the left */
+          <div className="flex items-center gap-4 flex-shrink-0">
+            <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
+              <div
+                className="w-2.5 h-2.5 rounded-full bg-primary transition-all group-hover:scale-110"
+                style={{ boxShadow: "0 0 10px 2px hsl(142 65% 55% / 0.5)" }}
+              />
+              <span className="font-semibold text-base tracking-tight text-foreground">Forest</span>
+            </Link>
+            <NavTabs />
+          </div>
         ) : (
-          <div className="flex items-center gap-5">
+          /* Marketing: brand on the left */
+          <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
+            <div
+              className="w-2.5 h-2.5 rounded-full bg-primary transition-all group-hover:scale-110"
+              style={{ boxShadow: "0 0 10px 2px hsl(142 65% 55% / 0.5)" }}
+            />
+            <span className="font-semibold text-base tracking-tight text-foreground">Forest</span>
+          </Link>
+        )}
+
+        {/* Right side */}
+        {isApp ? (
+          <div
+            className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold text-primary flex-shrink-0"
+            style={{
+              background: "linear-gradient(135deg,#1a3a28,#0d1f15)",
+              border: "1px solid rgba(255,255,255,0.10)",
+            }}
+          >
+            {initial}
+          </div>
+        ) : (
+          <div className="flex items-center gap-4 md:gap-5">
             <Link
               href="#how-it-works"
               className="hidden md:block text-sm text-muted-foreground hover:text-foreground transition-colors"
@@ -59,26 +81,12 @@ export function Navbar({ variant = "marketing", firstName }: NavbarProps) {
             >
               Demo
             </Link>
+            <Button size="sm" className="rounded-full px-5 text-xs font-semibold h-8" asChild>
+              <Link href={isLoggedIn ? "/home" : "/join"}>
+                {isLoggedIn ? "Dashboard" : "Join Now"}
+              </Link>
+            </Button>
           </div>
-        )}
-
-        {/* Right: avatar (app) or CTA button (marketing) */}
-        {isApp ? (
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold text-primary flex-shrink-0"
-            style={{
-              background: "linear-gradient(135deg,#1a3a28,#0d1f15)",
-              border: "1px solid rgba(255,255,255,0.10)",
-            }}
-          >
-            {initial}
-          </div>
-        ) : (
-          <Button size="sm" className="rounded-full px-5 text-xs font-semibold h-8" asChild>
-            <Link href={isLoggedIn ? "/home" : "/join"}>
-              {isLoggedIn ? "Dashboard" : "Join Now"}
-            </Link>
-          </Button>
         )}
       </nav>
     </header>
