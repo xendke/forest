@@ -43,6 +43,98 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
 }
 
+// ── ai insights shared logic ───────────────────────────────────────────────
+
+async function fetchAndCacheInsights(
+  userId: number,
+  cached: Awaited<ReturnType<typeof prisma.aiInsight.findUnique>>
+) {
+  const placeholder = { items: PLACEHOLDER_INSIGHTS, generatedAt: null, isExample: true }
+
+  try {
+    const thirtyDaysAgo = new Date()
+    thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30)
+    const sinceDate = thirtyDaysAgo.toISOString().split('T')[0]
+
+    const [quizzes, journalEntries] = await Promise.all([
+      prisma.dailyQuiz.findMany({
+        where: { userId, completed: true, skipped: false, date: { gte: sinceDate } },
+        include: {
+          questions: { where: { type: 'scale', isQuick: true } },
+          responses: true,
+        },
+        orderBy: { date: 'asc' },
+      }),
+      prisma.journalEntry.findMany({
+        where: { userId },
+        orderBy: { createdAt: 'desc' },
+        take: 30,
+        select: { createdAt: true, content: true },
+      }),
+    ])
+
+    if (quizzes.length < 5) {
+      await prisma.aiInsight.upsert({
+        where: { userId },
+        update: { insights: PLACEHOLDER_INSIGHTS as unknown as Prisma.InputJsonArray, isExample: true, generatedAt: new Date() },
+        create: { userId, insights: PLACEHOLDER_INSIGHTS as unknown as Prisma.InputJsonArray, isExample: true },
+      })
+      return { items: PLACEHOLDER_INSIGHTS, generatedAt: new Date().toISOString(), isExample: true }
+    }
+
+    const getScale = (quiz: typeof quizzes[0], category: string) => {
+      const q = quiz.questions.find((q) => q.category === category)
+      if (!q) return null
+      const r = quiz.responses.find((r) => r.questionId === q.id)
+      return r?.answer != null ? parseFloat(r.answer) : null
+    }
+
+    const quizData = quizzes
+      .map((quiz) => ({
+        date: quiz.date,
+        mood: getScale(quiz, 'Mood'),
+        anxiety: getScale(quiz, 'Anxiety'),
+        focus: getScale(quiz, 'Focus'),
+      }))
+      .filter((d): d is { date: string; mood: number; anxiety: number; focus: number } =>
+        d.mood !== null
+      )
+
+    const journalData = journalEntries.map((e) => ({
+      date: e.createdAt.toISOString().split('T')[0],
+      content: e.content,
+    }))
+
+    let insights: InsightItem[] = PLACEHOLDER_INSIGHTS
+    let isExample = true
+    try {
+      insights = await generateInsights(quizData, journalData)
+      isExample = false
+    } catch (err) {
+      console.error('[aiInsights] Claude generation failed:', err)
+      if (cached) {
+        return {
+          items: cached.insights,
+          generatedAt: cached.generatedAt.toISOString(),
+          isExample: cached.isExample,
+        }
+      }
+    }
+
+    const now = new Date()
+    await prisma.aiInsight.upsert({
+      where: { userId },
+      update: { insights: insights as unknown as Prisma.InputJsonArray, isExample, generatedAt: now },
+      create: { userId, insights: insights as unknown as Prisma.InputJsonArray, isExample },
+    })
+
+    return { items: insights, generatedAt: now.toISOString(), isExample }
+  } catch (err) {
+    console.error('[aiInsights] Failed to fetch/process data:', err)
+    return placeholder
+  }
+}
+
 // ── resolvers ──────────────────────────────────────────────────────────────
 
 export const resolvers = {
@@ -218,92 +310,7 @@ export const resolvers = {
         }
       }
 
-      // Fetch data, generate, and cache — all in one block so TypeScript infers include types
-      try {
-        const thirtyDaysAgo = new Date()
-        thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30)
-        const sinceDate = thirtyDaysAgo.toISOString().split('T')[0]
-
-        const [quizzes, journalEntries] = await Promise.all([
-          prisma.dailyQuiz.findMany({
-            where: { userId, completed: true, skipped: false, date: { gte: sinceDate } },
-            include: {
-              questions: { where: { type: 'scale', isQuick: true } },
-              responses: true,
-            },
-            orderBy: { date: 'asc' },
-          }),
-          prisma.journalEntry.findMany({
-            where: { userId },
-            orderBy: { createdAt: 'desc' },
-            take: 30,
-            select: { createdAt: true, content: true },
-          }),
-        ])
-
-        // Not enough data — store and return placeholder
-        if (quizzes.length < 5) {
-          await prisma.aiInsight.upsert({
-            where: { userId },
-            update: { insights: PLACEHOLDER_INSIGHTS as unknown as Prisma.InputJsonArray, isExample: true, generatedAt: new Date() },
-            create: { userId, insights: PLACEHOLDER_INSIGHTS as unknown as Prisma.InputJsonArray, isExample: true },
-          })
-          return { items: PLACEHOLDER_INSIGHTS, generatedAt: new Date().toISOString(), isExample: true }
-        }
-
-        // Build compact quiz score array for the prompt
-        const getScale = (quiz: typeof quizzes[0], category: string) => {
-          const q = quiz.questions.find((q) => q.category === category)
-          if (!q) return null
-          const r = quiz.responses.find((r) => r.questionId === q.id)
-          return r?.answer != null ? parseFloat(r.answer) : null
-        }
-
-        const quizData = quizzes
-          .map((quiz) => ({
-            date: quiz.date,
-            mood: getScale(quiz, 'Mood'),
-            anxiety: getScale(quiz, 'Anxiety'),
-            focus: getScale(quiz, 'Focus'),
-          }))
-          .filter((d): d is { date: string; mood: number; anxiety: number; focus: number } =>
-            d.mood !== null
-          )
-
-        const journalData = journalEntries.map((e) => ({
-          date: e.createdAt.toISOString().split('T')[0],
-          content: e.content,
-        }))
-
-        // Call Claude; fall back to stale cache or placeholder on error
-        let insights: InsightItem[] = PLACEHOLDER_INSIGHTS
-        let isExample = true
-        try {
-          insights = await generateInsights(quizData, journalData)
-          isExample = false
-        } catch (err) {
-          console.error('[aiInsights] Claude generation failed:', err)
-          if (cached) {
-            return {
-              items: cached.insights,
-              generatedAt: cached.generatedAt.toISOString(),
-              isExample: cached.isExample,
-            }
-          }
-        }
-
-        const now = new Date()
-        await prisma.aiInsight.upsert({
-          where: { userId },
-          update: { insights: insights as unknown as Prisma.InputJsonArray, isExample, generatedAt: now },
-          create: { userId, insights: insights as unknown as Prisma.InputJsonArray, isExample },
-        })
-
-        return { items: insights, generatedAt: now.toISOString(), isExample }
-      } catch (err) {
-        console.error('[aiInsights] Failed to fetch/process data:', err)
-        return placeholder
-      }
+      return fetchAndCacheInsights(userId, cached)
     },
 
     todayQuiz: async (_: unknown, __: unknown, context: MercuriusContext) => {
@@ -481,6 +488,13 @@ export const resolvers = {
       if (!entry || entry.userId !== userId) throw new Error('Entry not found')
       await prisma.journalEntry.delete({ where: { id } })
       return true
+    },
+
+    refreshAiInsights: async (_: unknown, __: unknown, context: MercuriusContext) => {
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
+      await prisma.aiInsight.deleteMany({ where: { userId } })
+      return fetchAndCacheInsights(userId, null)
     },
 
     reopenQuiz: async (

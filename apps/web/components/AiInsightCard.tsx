@@ -1,9 +1,19 @@
+"use client"
+
+import { useState } from "react"
 import type React from "react"
 import type { AiInsightsResult, AiInsightItem } from "@/types/insights"
+import { gql } from "@/lib/api"
+import { useRouter } from "next/navigation"
+import { RefreshCw } from "lucide-react"
 
 interface AiInsightCardProps {
   data: AiInsightsResult
 }
+
+const REFRESH_MUTATION = `
+  mutation { refreshAiInsights { items { type emoji insight } generatedAt isExample } }
+`
 
 function timeAgo(iso: string): string {
   const diff = (Date.now() - new Date(iso).getTime()) / 60000 // minutes
@@ -26,8 +36,25 @@ const typeBg: Record<AiInsightItem["type"], string> = {
   neutral:  "rgba(255,255,255,0.04)",
 }
 
-export function AiInsightCard({ data }: AiInsightCardProps) {
+export function AiInsightCard({ data: initialData }: AiInsightCardProps) {
+  const [data, setData] = useState(initialData)
+  const [refreshing, setRefreshing] = useState(false)
+  const router = useRouter()
+
   const { items, generatedAt, isExample } = data
+
+  async function handleRefresh() {
+    setRefreshing(true)
+    try {
+      const result = await gql<{ refreshAiInsights: AiInsightsResult }>(REFRESH_MUTATION)
+      setData(result.refreshAiInsights)
+      router.refresh()
+    } catch {
+      // silently ignore — stale data stays visible
+    } finally {
+      setRefreshing(false)
+    }
+  }
 
   return (
     <section
@@ -68,15 +95,35 @@ export function AiInsightCard({ data }: AiInsightCardProps) {
             </div>
           </div>
 
-          {/* Animated spark icon */}
-          <div
-            className="w-8 h-8 rounded-full flex items-center justify-center text-base flex-shrink-0"
-            style={{
-              background: "rgba(62,224,127,0.10)",
-              border: "1px solid rgba(62,224,127,0.18)",
-            }}
-          >
-            ✦
+          <div className="flex items-center gap-2 flex-shrink-0">
+            {/* Refresh button */}
+            <button
+              onClick={handleRefresh}
+              disabled={refreshing}
+              title="Refresh insights"
+              className="w-7 h-7 rounded-full flex items-center justify-center transition-colors disabled:opacity-40"
+              style={{
+                background: "rgba(255,255,255,0.05)",
+                border: "1px solid rgba(255,255,255,0.08)",
+              }}
+            >
+              <RefreshCw
+                size={12}
+                className={refreshing ? "animate-spin" : ""}
+                style={{ color: "rgba(154,168,160,0.8)" }}
+              />
+            </button>
+
+            {/* Spark icon */}
+            <div
+              className="w-8 h-8 rounded-full flex items-center justify-center text-base"
+              style={{
+                background: "rgba(62,224,127,0.10)",
+                border: "1px solid rgba(62,224,127,0.18)",
+              }}
+            >
+              ✦
+            </div>
           </div>
         </div>
 
@@ -99,7 +146,7 @@ export function AiInsightCard({ data }: AiInsightCardProps) {
                 {item.emoji}
               </div>
 
-              {/* Text + type dot */}
+              {/* Text */}
               <div className="flex-1 min-w-0">
                 <p
                   className="text-[13.5px] leading-[1.6]"

@@ -19,6 +19,7 @@ export const typeDefs = `
     createJournalEntry(content: String!): JournalEntry!
     updateJournalEntry(id: Int!, content: String!): JournalEntry!
     deleteJournalEntry(id: Int!): Boolean!
+    refreshAiInsights: AiInsightsResult!
   }
 
   type User {
