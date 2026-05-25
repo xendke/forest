@@ -4,6 +4,7 @@ import { useState, useRef, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { ChevronDown } from "lucide-react"
+import { navDropdownStyle } from "@/lib/nav-dropdown-style"
 
 const TABS = [
   { label: "Overview", href: "/home" },
@@ -13,15 +14,6 @@ const TABS = [
 const tabGroupStyle = {
   background: "rgba(255,255,255,0.03)",
   border: "1px solid rgba(255,255,255,0.06)",
-} as React.CSSProperties
-
-const dropdownStyle = {
-  background: "rgba(10,16,13,0.92)",
-  backdropFilter: "blur(18px)",
-  WebkitBackdropFilter: "blur(18px)",
-  border: "1px solid rgba(255,255,255,0.08)",
-  boxShadow: "0 16px 40px rgba(0,0,0,0.6)",
-  minWidth: "140px",
 } as React.CSSProperties
 
 export function NavTabs() {
@@ -77,7 +69,7 @@ export function NavTabs() {
         </button>
 
         {open && (
-          <div className="absolute top-full left-0 mt-2 rounded-xl overflow-hidden z-50" style={dropdownStyle}>
+          <div className="absolute top-full right-0 mt-2 rounded-xl overflow-hidden z-50" style={navDropdownStyle}>
             {TABS.map((tab) => (
               <Link
                 key={tab.href}

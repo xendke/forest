@@ -35,26 +35,18 @@ export function Navbar({ variant = "marketing", firstName }: NavbarProps) {
         } mx-auto flex items-center justify-between px-5 py-3 rounded-2xl`}
         style={navStyle}
       >
-        {isApp ? (
-          /* App: brand + tabs grouped on the left */
-          <div className="flex items-center gap-4 flex-shrink-0">
-            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-              <SproutIcon size={22} />
-              <span className="font-semibold text-base tracking-tight text-foreground">Forest</span>
-            </Link>
-            <NavTabs />
-          </div>
-        ) : (
-          /* Marketing: brand on the left */
-          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
-            <SproutIcon size={22} />
-            <span className="font-semibold text-base tracking-tight text-foreground">Forest</span>
-          </Link>
-        )}
+        {/* Brand — always left */}
+        <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+          <SproutIcon size={22} />
+          <span className="font-semibold text-base tracking-tight text-foreground">Forest</span>
+        </Link>
 
         {/* Right side */}
         {isApp ? (
-          <UserMenu initial={initial} />
+          <div className="flex items-center gap-3">
+            <NavTabs />
+            <UserMenu initial={initial} />
+          </div>
         ) : (
           <div className="flex items-center gap-4 md:gap-5">
             <Link

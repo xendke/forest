@@ -3,6 +3,7 @@
 import { useState, useEffect, useRef } from "react"
 import Link from "next/link"
 import { LogOut } from "lucide-react"
+import { navDropdownStyle } from "@/lib/nav-dropdown-style"
 
 export function UserMenu({ initial }: { initial: string }) {
   const [open, setOpen] = useState(false)
@@ -34,19 +35,11 @@ export function UserMenu({ initial }: { initial: string }) {
       </button>
 
       {open && (
-        <div
-          className="absolute right-0 mt-2 w-44 rounded-xl py-1 z-50"
-          style={{
-            background: "rgba(10,20,14,0.95)",
-            border: "1px solid rgba(255,255,255,0.08)",
-            backdropFilter: "blur(20px)",
-            boxShadow: "0 16px 40px rgba(0,0,0,0.5)",
-          }}
-        >
+        <div className="absolute right-0 mt-2 rounded-xl overflow-hidden z-50" style={navDropdownStyle}>
           <Link
             href="/logout"
             onClick={() => setOpen(false)}
-            className="flex items-center gap-2.5 px-4 py-2.5 text-sm text-muted-foreground hover:text-foreground hover:bg-white/5 transition-colors"
+            className="flex items-center gap-2.5 px-4 py-3 text-sm font-medium text-muted-foreground hover:text-foreground hover:bg-white/[0.04] transition-colors"
           >
             <LogOut size={14} />
             Log out
