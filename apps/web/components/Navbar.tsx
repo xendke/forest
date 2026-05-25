@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { getServerToken } from "@/lib/auth"
 import { NavTabs } from "@/components/NavTabs"
+import { SproutIcon } from "@/components/SproutIcon"
 
 const navStyle = {
   background: "rgba(5, 15, 8, 0.7)",
@@ -36,22 +37,16 @@ export function Navbar({ variant = "marketing", firstName }: NavbarProps) {
         {isApp ? (
           /* App: brand + tabs grouped on the left */
           <div className="flex items-center gap-4 flex-shrink-0">
-            <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
-              <div
-                className="w-2.5 h-2.5 rounded-full bg-primary transition-all group-hover:scale-110"
-                style={{ boxShadow: "0 0 10px 2px hsl(142 65% 55% / 0.5)" }}
-              />
+            <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+              <SproutIcon size={22} />
               <span className="font-semibold text-base tracking-tight text-foreground">Forest</span>
             </Link>
             <NavTabs />
           </div>
         ) : (
           /* Marketing: brand on the left */
-          <Link href="/" className="flex items-center gap-2.5 group flex-shrink-0">
-            <div
-              className="w-2.5 h-2.5 rounded-full bg-primary transition-all group-hover:scale-110"
-              style={{ boxShadow: "0 0 10px 2px hsl(142 65% 55% / 0.5)" }}
-            />
+          <Link href="/" className="flex items-center gap-2 group flex-shrink-0">
+            <SproutIcon size={22} />
             <span className="font-semibold text-base tracking-tight text-foreground">Forest</span>
           </Link>
         )}
