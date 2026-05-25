@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { getServerToken } from "@/lib/auth"
 import { NavTabs } from "@/components/NavTabs"
 import { SproutIcon } from "@/components/SproutIcon"
+import { UserMenu } from "@/components/UserMenu"
 
 const navStyle = {
   background: "rgba(5, 15, 8, 0.7)",
@@ -53,15 +54,7 @@ export function Navbar({ variant = "marketing", firstName }: NavbarProps) {
 
         {/* Right side */}
         {isApp ? (
-          <div
-            className="w-9 h-9 rounded-full flex items-center justify-center text-[13px] font-semibold text-primary flex-shrink-0"
-            style={{
-              background: "linear-gradient(135deg,#1a3a28,#0d1f15)",
-              border: "1px solid rgba(255,255,255,0.10)",
-            }}
-          >
-            {initial}
-          </div>
+          <UserMenu initial={initial} />
         ) : (
           <div className="flex items-center gap-4 md:gap-5">
             <Link
