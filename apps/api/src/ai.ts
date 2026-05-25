@@ -73,7 +73,9 @@ export async function generateInsights(
   })
 
   const text = message.content[0].type === 'text' ? message.content[0].text : ''
-  const parsed = JSON.parse(text.trim()) as InsightItem[]
+  // Strip markdown code fences if the model wraps the JSON anyway
+  const json = text.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/, '')
+  const parsed = JSON.parse(json) as InsightItem[]
 
   // Validate shape — if Claude went rogue, throw so caller can fall back
   if (!Array.isArray(parsed) || parsed.length === 0) throw new Error('Invalid AI response shape')
