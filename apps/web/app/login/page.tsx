@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { AuthForm } from "@/components/AuthForm"
+import { SproutIcon } from "@/components/SproutIcon"
 import type { Metadata } from "next"
 
 export const metadata: Metadata = {
@@ -23,10 +24,7 @@ export default function LoginPage() {
             href="/"
             className="inline-flex items-center gap-2 justify-center group"
           >
-            <div
-              className="w-2.5 h-2.5 rounded-full bg-primary transition-all group-hover:scale-110"
-              style={{ boxShadow: "0 0 10px 2px hsl(142 65% 55% / 0.5)" }}
-            />
+            <SproutIcon size={22} />
             <span className="font-semibold text-base">Forest</span>
           </Link>
           <h1 className="text-2xl font-bold tracking-tight">Welcome back</h1>
