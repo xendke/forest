@@ -529,7 +529,7 @@ export const resolvers = {
       return true
     },
 
-    refreshAiInsights: async (_: unknown, __: unknown, context: MercuriusContext) => {
+    refreshInsights: async (_: unknown, __: unknown, context: MercuriusContext) => {
       const userId = getUserId(context)
       if (!userId) throw new Error('Unauthorized')
       await prisma.aiInsight.deleteMany({ where: { userId } })

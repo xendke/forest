@@ -7,9 +7,9 @@ import { Navbar } from "@/components/Navbar"
 import { WellbeingCard } from "@/components/WellbeingCard"
 import { CheckInCard } from "@/components/CheckInCard"
 import { StreakCard } from "@/components/StreakCard"
-import { AiInsightCard } from "@/components/AiInsightCard"
+import { InsightsCard } from "@/components/InsightsCard"
 import type { DailyQuiz, QuizHistoryEntry, StreakInfo } from "@/types/quiz"
-import type { AiInsightsResult } from "@/types/insights"
+import type { InsightsResult } from "@/types/insights"
 
 export const metadata: Metadata = {
   title: "Home — Forest",
@@ -32,11 +32,11 @@ type HomeData = {
   todayQuiz: DailyQuiz | null
   quizHistory: QuizHistoryEntry[]
   streakInfo: StreakInfo
-  aiInsights: AiInsightsResult
+  aiInsights: InsightsResult
 }
 
 const DEFAULT_STREAK: StreakInfo = { current: 0, best: 0, last7: [] }
-const DEFAULT_INSIGHTS: AiInsightsResult = {
+const DEFAULT_INSIGHTS: InsightsResult = {
   items: [],
   generatedAt: null,
   isExample: true,
@@ -66,7 +66,7 @@ export default async function HomePage() {
   let initialQuiz: DailyQuiz | null = null
   let history: QuizHistoryEntry[] = []
   let streak: StreakInfo = DEFAULT_STREAK
-  let insights: AiInsightsResult = DEFAULT_INSIGHTS
+  let insights: InsightsResult = DEFAULT_INSIGHTS
 
   try {
     const data = await serverGql<HomeData>(HOME_QUERY)
@@ -136,7 +136,7 @@ export default async function HomePage() {
           {/* Dashboard grid */}
           <div className="grid grid-cols-12 gap-[18px]">
             <CheckInCard quiz={initialQuiz} />
-            <AiInsightCard data={insights} />
+            <InsightsCard data={insights} />
             <WellbeingCard history={history} />
             <StreakCard streak={streak} />
           </div>

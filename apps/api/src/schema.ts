@@ -6,7 +6,7 @@ export const typeDefs = `
     quizHistory(days: Int): [DailyQuizHistory!]!
     streakInfo: StreakInfo!
     journalEntries(limit: Int, offset: Int): [JournalEntry!]!
-    aiInsights: AiInsightsResult!
+    aiInsights: InsightsResult!
   }
 
   type Mutation {
@@ -20,7 +20,7 @@ export const typeDefs = `
     createJournalEntry(content: String!): JournalEntry!
     updateJournalEntry(id: Int!, content: String!): JournalEntry!
     deleteJournalEntry(id: Int!): Boolean!
-    refreshAiInsights: AiInsightsResult!
+    refreshInsights: InsightsResult!
   }
 
   type User {
@@ -86,15 +86,15 @@ export const typeDefs = `
     updatedAt: String!
   }
 
-  type AiInsightItem {
+  type InsightItem {
     type: String!
     emoji: String!
     insight: String!
     detail: String
   }
 
-  type AiInsightsResult {
-    items: [AiInsightItem!]!
+  type InsightsResult {
+    items: [InsightItem!]!
     generatedAt: String
     isExample: Boolean!
   }
