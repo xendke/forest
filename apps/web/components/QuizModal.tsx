@@ -37,11 +37,11 @@ const COMPLETE_QUIZ = `
 function ScaleInput({
   options,
   value,
-  onChange,
+  onSelect,
 }: {
   options: string[]
   value: string
-  onChange: (v: string) => void
+  onSelect: (v: string) => void
 }) {
   return (
     <div className="flex flex-col items-center gap-3">
@@ -50,7 +50,7 @@ function ScaleInput({
           <button
             key={opt}
             type="button"
-            onClick={() => onChange(opt)}
+            onClick={() => onSelect(opt)}
             className={`w-12 h-12 rounded-full text-sm font-semibold transition-all border ${
               value === opt
                 ? "bg-primary text-primary-foreground border-primary shadow-[0_0_16px_2px] shadow-primary/40"
@@ -72,11 +72,11 @@ function ScaleInput({
 function OptionInput({
   options,
   value,
-  onChange,
+  onSelect,
 }: {
   options: string[]
   value: string
-  onChange: (v: string) => void
+  onSelect: (v: string) => void
 }) {
   return (
     <div className="flex flex-col gap-2 w-full">
@@ -84,7 +84,7 @@ function OptionInput({
         <button
           key={opt}
           type="button"
-          onClick={() => onChange(opt)}
+          onClick={() => onSelect(opt)}
           className={`w-full py-3 px-5 rounded-xl text-sm font-medium transition-all border text-left ${
             value === opt
               ? "bg-primary/15 border-primary/50 text-foreground"
@@ -207,14 +207,15 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
     setAnswers((prev) => ({ ...prev, [currentQuestion.id]: v }))
   }
 
-  const saveAndAdvance = async (skipQuestion = false) => {
+  const saveAndAdvance = async (skipQuestion = false, answerOverride?: string) => {
     if (!quiz || !currentQuestion) return
     setSubmitting(true)
     try {
+      const answer = skipQuestion ? null : (answerOverride ?? currentAnswer) || null
       await gql(SUBMIT_RESPONSE, {
         quizId: quiz.id,
         questionId: currentQuestion.id,
-        answer: skipQuestion ? null : currentAnswer || null,
+        answer,
         skipped: skipQuestion,
       })
       if (isLast) {
@@ -226,6 +227,11 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
     } finally {
       setSubmitting(false)
     }
+  }
+
+  const handleChoiceSelect = (v: string) => {
+    setAnswer(v)
+    saveAndAdvance(false, v)
   }
 
   const skipQuiz = async () => {
@@ -288,10 +294,10 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
 
             <div>
               {currentQuestion.type === "scale" && (
-                <ScaleInput options={currentQuestion.options} value={currentAnswer} onChange={setAnswer} />
+                <ScaleInput options={currentQuestion.options} value={currentAnswer} onSelect={handleChoiceSelect} />
               )}
               {(currentQuestion.type === "binary" || currentQuestion.type === "three_option") && (
-                <OptionInput options={currentQuestion.options} value={currentAnswer} onChange={setAnswer} />
+                <OptionInput options={currentQuestion.options} value={currentAnswer} onSelect={handleChoiceSelect} />
               )}
               {currentQuestion.type === "free_text" && (
                 <FreeTextInput value={currentAnswer} onChange={setAnswer} />
@@ -299,18 +305,23 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
             </div>
 
             <div className="flex items-center justify-between">
-              <Button variant="ghost" size="sm" disabled={currentIndex === 0} onClick={() => setCurrentIndex((i) => i - 1)} className="text-muted-foreground">
+              <Button variant="ghost" size="sm" disabled={currentIndex === 0 || submitting} onClick={() => setCurrentIndex((i) => i - 1)} className="text-muted-foreground">
                 ← Back
               </Button>
-              <Button size="sm" disabled={submitting} onClick={() => saveAndAdvance(false)} className="rounded-full px-6">
-                {submitting ? "…" : isLast ? "Submit" : "Next →"}
-              </Button>
-            </div>
-
-            <div className="text-center">
-              <button onClick={() => saveAndAdvance(true)} disabled={submitting} className="text-xs text-muted-foreground/50 hover:text-muted-foreground transition-colors">
-                Skip this question
-              </button>
+              {currentQuestion.type === "free_text" && (
+                <div className="flex items-center gap-3">
+                  <button
+                    onClick={() => saveAndAdvance(true)}
+                    disabled={submitting}
+                    className="text-sm text-muted-foreground/60 hover:text-muted-foreground transition-colors"
+                  >
+                    Skip
+                  </button>
+                  <Button size="sm" disabled={submitting} onClick={() => saveAndAdvance(false)} className="rounded-full px-6">
+                    {submitting ? "…" : isLast ? "Submit" : "Next →"}
+                  </Button>
+                </div>
+              )}
             </div>
           </div>
         )}

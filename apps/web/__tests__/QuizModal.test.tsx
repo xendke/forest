@@ -190,15 +190,16 @@ describe('question screen', () => {
 
   it('Back button navigates to the previous question', async () => {
     const user = await renderAndStart(makeQuiz({ questions: [Q.scale, Q.binary] }))
-    await user.click(screen.getByRole('button', { name: /next/i }))
+    // Choice questions auto-advance on selection
+    await user.click(screen.getByRole('button', { name: '3' }))
     await waitFor(() => screen.getByText(Q.binary.text))
     await user.click(screen.getByRole('button', { name: /back/i }))
     expect(screen.getByText(Q.scale.text)).toBeInTheDocument()
   })
 
-  it('Next calls submitQuizResponse and advances to the next question', async () => {
+  it('selecting a choice answer calls submitQuizResponse and advances', async () => {
     const user = await renderAndStart(makeQuiz({ questions: [Q.scale, Q.binary] }))
-    await user.click(screen.getByRole('button', { name: /next/i }))
+    await user.click(screen.getByRole('button', { name: '3' }))
     await waitFor(() => {
       expect(mockGql).toHaveBeenCalledWith(
         expect.stringContaining('submitQuizResponse'),
@@ -208,14 +209,14 @@ describe('question screen', () => {
     })
   })
 
-  it('last question shows "Submit" instead of "Next"', async () => {
-    await renderAndStart()
+  it('free_text question shows "Submit" and "Skip" buttons', async () => {
+    await renderAndStart(makeQuiz({ questions: [Q.freeText] }))
     expect(screen.getByRole('button', { name: /submit/i })).toBeInTheDocument()
-    expect(screen.queryByRole('button', { name: /next/i })).not.toBeInTheDocument()
+    expect(screen.getByRole('button', { name: /^skip$/i })).toBeInTheDocument()
   })
 
-  it('Submit calls completeQuiz with skipped=false and shows done screen', async () => {
-    await renderAndStart()
+  it('Submit on free_text calls completeQuiz and shows done screen', async () => {
+    await renderAndStart(makeQuiz({ questions: [Q.freeText] }))
     await userEvent.click(screen.getByRole('button', { name: /submit/i }))
     await waitFor(() => {
       expect(mockGql).toHaveBeenCalledWith(
@@ -226,9 +227,9 @@ describe('question screen', () => {
     })
   })
 
-  it('"Skip this question" calls submitQuizResponse with skipped=true', async () => {
-    const user = await renderAndStart()
-    await user.click(screen.getByRole('button', { name: /skip this question/i }))
+  it('"Skip" on free_text calls submitQuizResponse with skipped=true', async () => {
+    const user = await renderAndStart(makeQuiz({ questions: [Q.freeText] }))
+    await user.click(screen.getByRole('button', { name: /^skip$/i }))
     await waitFor(() => {
       expect(mockGql).toHaveBeenCalledWith(
         expect.stringContaining('submitQuizResponse'),
@@ -286,7 +287,7 @@ describe('input components', () => {
 
 describe('done screen', () => {
   async function reachDoneScreen() {
-    const user = await renderAndStart()
+    const user = await renderAndStart(makeQuiz({ questions: [Q.freeText] }))
     await user.click(screen.getByRole('button', { name: /submit/i }))
     await waitFor(() => screen.getByText(/all done for today/i))
     return user
