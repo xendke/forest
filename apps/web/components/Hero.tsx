@@ -47,7 +47,7 @@ export function Hero() {
           </p>
         </div>
 
-        <div className="flex items-center justify-center gap-4 pt-2">
+        <div className="flex flex-wrap items-center justify-center gap-4 pt-2">
           {isLoggedIn ? (
             <Button size="lg" asChild>
               <Link href="/home">Dashboard →</Link>
