@@ -377,7 +377,7 @@ export function GoalsPage({
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
             {goals.map((goal) => (
               <GoalCard
                 key={goal.id}
@@ -432,7 +432,7 @@ export function GoalsPage({
                 <Sparkles className="w-3.5 h-3.5 text-primary" />
                 <span className="text-xs font-medium text-primary">Suggested for you</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {recommended.map((s) => (
                   <SuggestionCard
                     key={s.title}
@@ -447,7 +447,7 @@ export function GoalsPage({
 
           {/* Rest of library */}
           {rest.length > 0 && (
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               {rest.map((s) => (
                 <SuggestionCard
                   key={s.title}

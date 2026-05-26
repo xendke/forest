@@ -68,9 +68,7 @@ export default async function GoalsRoute() {
           </p>
         </div>
 
-        <div className="max-w-[780px]">
-          <GoalsPage initialGoals={goals} suggestions={suggestions} />
-        </div>
+        <GoalsPage initialGoals={goals} suggestions={suggestions} />
       </main>
     </div>
   )
