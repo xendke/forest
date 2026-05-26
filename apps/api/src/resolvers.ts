@@ -530,9 +530,23 @@ export const resolvers = {
     },
 
     refreshInsights: async (_: unknown, __: unknown, context: MercuriusContext) => {
-      const userId = getUserId(context)
-      if (!userId) throw new Error('Unauthorized')
-      await prisma.aiInsight.deleteMany({ where: { userId } })
+      const ctx = getUserContext(context)
+      if (!ctx) throw new Error('Unauthorized')
+      const { userId, isDemo } = ctx
+
+      const cached = await prisma.aiInsight.findUnique({ where: { userId } })
+
+      if (isDemo && cached) {
+        return {
+          items: cached.insights,
+          generatedAt: cached.generatedAt.toISOString(),
+          isExample: cached.isExample,
+        }
+      }
+
+      if (!isDemo) {
+        await prisma.aiInsight.deleteMany({ where: { userId } })
+      }
       return fetchAndCacheInsights(userId, null)
     },
 
