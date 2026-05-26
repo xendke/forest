@@ -19,6 +19,7 @@ model User {
   dailyQuizzes   DailyQuiz[]
   journalEntries JournalEntry[]
   aiInsight      AiInsight?
+  goals          Goal[]
 }
 
 model Question {
@@ -75,4 +76,29 @@ model AiInsight {
   isExample   Boolean  @default(false)
   generatedAt DateTime @default(now())
   user        User     @relation(fields: [userId], references: [id])
+}
+
+model Goal {
+  id          Int              @id @default(autoincrement())
+  userId      Int
+  title       String
+  description String?
+  category    String
+  emoji       String           @default("🎯")
+  frequency   String           @default("daily")
+  source      String           @default("manual")
+  isActive    Boolean          @default(true)
+  createdAt   DateTime         @default(now())
+  user        User             @relation(fields: [userId], references: [id])
+  completions GoalCompletion[]
+}
+
+model GoalCompletion {
+  id        Int      @id @default(autoincrement())
+  goalId    Int
+  date      String
+  createdAt DateTime @default(now())
+  goal      Goal     @relation(fields: [goalId], references: [id])
+
+  @@unique([goalId, date])
 }

@@ -50,6 +50,73 @@ function shuffle<T>(arr: T[]): T[] {
   return [...arr].sort(() => Math.random() - 0.5)
 }
 
+// ── goal helpers ───────────────────────────────────────────────────────────
+
+const GOAL_LIBRARY = [
+  { title: "Morning meditation",      description: "Start your day with 5 minutes of quiet focus",         category: "Mindfulness", emoji: "🧘", frequency: "daily" },
+  { title: "Box breathing",           description: "4-4-4-4 breath cycle to ease anxiety",                 category: "Mindfulness", emoji: "🌬️", frequency: "daily" },
+  { title: "Gratitude journaling",    description: "Write 3 things you're grateful for today",             category: "Mindfulness", emoji: "✍️", frequency: "daily" },
+  { title: "Digital detox hour",      description: "One screen-free hour before bed",                      category: "Mindfulness", emoji: "📵", frequency: "daily" },
+  { title: "Morning sunlight",        description: "Get outside within an hour of waking",                 category: "Mood",        emoji: "☀️", frequency: "daily" },
+  { title: "Time in nature",          description: "Spend time outside in a natural setting",              category: "Mood",        emoji: "🌿", frequency: "daily" },
+  { title: "Act of kindness",         description: "Do something thoughtful for another person",           category: "Mood",        emoji: "😊", frequency: "daily" },
+  { title: "Creative activity",       description: "15+ minutes of any creative pursuit",                  category: "Mood",        emoji: "🎨", frequency: "daily" },
+  { title: "Phone-free focus session",description: "25 minutes of deep work, no distractions",            category: "Focus",       emoji: "🎯", frequency: "daily" },
+  { title: "Read for 15 minutes",     description: "Build a daily reading habit",                          category: "Focus",       emoji: "📚", frequency: "daily" },
+  { title: "Plan tomorrow",           description: "5 minutes planning your next day before bed",          category: "Focus",       emoji: "📋", frequency: "daily" },
+  { title: "Tackle one priority task",description: "Complete your most important task first",              category: "Focus",       emoji: "✅", frequency: "daily" },
+  { title: "No social media before 10am", description: "Protect your morning mental clarity",             category: "Focus",       emoji: "🚫", frequency: "daily" },
+  { title: "Drink 8 glasses of water",description: "Stay consistently hydrated",                          category: "Body",        emoji: "💧", frequency: "daily" },
+  { title: "30 minutes of movement",  description: "Any form of physical activity counts",                 category: "Body",        emoji: "🏃", frequency: "daily" },
+  { title: "Evening walk",            description: "Wind down with a gentle walk after dinner",            category: "Body",        emoji: "🚶", frequency: "daily" },
+  { title: "In bed by 10:30pm",       description: "Anchor your sleep schedule",                           category: "Sleep",       emoji: "😴", frequency: "daily" },
+  { title: "No screens before bed",   description: "30 minute wind-down without devices",                  category: "Sleep",       emoji: "🌙", frequency: "daily" },
+  { title: "Connect with a friend",   description: "Call or message someone you care about",              category: "Social",      emoji: "📞", frequency: "daily" },
+  { title: "Share how you feel",      description: "Open up to someone you trust",                        category: "Social",      emoji: "💬", frequency: "daily" },
+]
+
+function getPrevDay(dateStr: string): string {
+  const d = new Date(dateStr + 'T00:00:00Z')
+  d.setUTCDate(d.getUTCDate() - 1)
+  return d.toISOString().split('T')[0]
+}
+
+function computeGoalStreak(completionDates: string[], today: string): number {
+  const dateSet = new Set(completionDates)
+  const start = dateSet.has(today) ? today : getPrevDay(today)
+  if (!dateSet.has(start)) return 0
+  let streak = 0
+  let cur = start
+  while (dateSet.has(cur)) {
+    streak++
+    cur = getPrevDay(cur)
+  }
+  return streak
+}
+
+function serializeGoal(
+  goal: {
+    id: number; title: string; description: string | null; category: string; emoji: string
+    frequency: string; source: string; createdAt: Date; completions: { date: string }[]
+  },
+  today: string
+) {
+  const dates = goal.completions.map((c) => c.date)
+  return {
+    id: goal.id,
+    title: goal.title,
+    description: goal.description,
+    category: goal.category,
+    emoji: goal.emoji,
+    frequency: goal.frequency,
+    source: goal.source,
+    completedToday: dates.includes(today),
+    currentStreak: computeGoalStreak(dates, today),
+    totalCompletions: dates.length,
+    createdAt: goal.createdAt.toISOString(),
+  }
+}
+
 // ── ai insights shared logic ───────────────────────────────────────────────
 
 async function fetchAndCacheInsights(
@@ -320,6 +387,48 @@ export const resolvers = {
       return fetchAndCacheInsights(userId, cached)
     },
 
+    goals: async (_: unknown, __: unknown, context: MercuriusContext) => {
+      const userId = getUserId(context)
+      if (!userId) return []
+      const today = todayUTC()
+      const goals = await prisma.goal.findMany({
+        where: { userId, isActive: true },
+        include: { completions: { orderBy: { date: 'asc' } } },
+        orderBy: { createdAt: 'asc' },
+      })
+      return goals.map((g) => serializeGoal(g, today))
+    },
+
+    goalSuggestions: async (_: unknown, __: unknown, context: MercuriusContext) => {
+      const userId = getUserId(context)
+      if (!userId) return GOAL_LIBRARY.map((g) => ({ ...g, isRecommended: false }))
+
+      const [activeGoals, insight] = await Promise.all([
+        prisma.goal.findMany({ where: { userId, isActive: true }, select: { title: true } }),
+        prisma.aiInsight.findUnique({ where: { userId } }),
+      ])
+
+      const activeTitles = new Set(activeGoals.map((g) => g.title.toLowerCase()))
+
+      const recommendedCategories = new Set<string>()
+      if (insight && !insight.isExample) {
+        const items = insight.insights as unknown as { type: string; insight: string }[]
+        for (const item of items) {
+          if (item.type !== 'warning') continue
+          const t = item.insight.toLowerCase()
+          if (/anxi|stress|overwhelm|nervous/.test(t)) recommendedCategories.add('Mindfulness')
+          if (/mood|low|sad|energy|depress/.test(t))   { recommendedCategories.add('Mood'); recommendedCategories.add('Body') }
+          if (/focus|distract|concentrat|productiv/.test(t)) recommendedCategories.add('Focus')
+          if (/sleep|tired|fatigue|rest/.test(t))       recommendedCategories.add('Sleep')
+          if (/isolat|social|connect|lonely/.test(t))   recommendedCategories.add('Social')
+        }
+      }
+
+      return GOAL_LIBRARY
+        .filter((g) => !activeTitles.has(g.title.toLowerCase()))
+        .map((g) => ({ ...g, isRecommended: recommendedCategories.has(g.category) }))
+    },
+
     todayQuiz: async (_: unknown, __: unknown, context: MercuriusContext) => {
       const userId = getUserId(context)
       if (!userId) return null
@@ -548,6 +657,70 @@ export const resolvers = {
         await prisma.aiInsight.deleteMany({ where: { userId } })
       }
       return fetchAndCacheInsights(userId, null)
+    },
+
+    createGoal: async (
+      _: unknown,
+      args: { title: string; description?: string; category: string; emoji: string; frequency?: string; source?: string },
+      context: MercuriusContext
+    ) => {
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
+      const today = todayUTC()
+      const goal = await prisma.goal.create({
+        data: {
+          userId,
+          title: args.title,
+          description: args.description ?? null,
+          category: args.category,
+          emoji: args.emoji,
+          frequency: args.frequency ?? 'daily',
+          source: args.source ?? 'manual',
+        },
+        include: { completions: true },
+      })
+      return serializeGoal(goal, today)
+    },
+
+    toggleGoalCompletion: async (
+      _: unknown,
+      { goalId, date }: { goalId: number; date: string },
+      context: MercuriusContext
+    ) => {
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
+      const today = todayUTC()
+
+      const goal = await prisma.goal.findUnique({ where: { id: goalId } })
+      if (!goal || goal.userId !== userId) throw new Error('Goal not found')
+
+      const existing = await prisma.goalCompletion.findUnique({
+        where: { goalId_date: { goalId, date } },
+      })
+      if (existing) {
+        await prisma.goalCompletion.delete({ where: { id: existing.id } })
+      } else {
+        await prisma.goalCompletion.create({ data: { goalId, date } })
+      }
+
+      const updated = await prisma.goal.findUnique({
+        where: { id: goalId },
+        include: { completions: { orderBy: { date: 'asc' } } },
+      })
+      return serializeGoal(updated!, today)
+    },
+
+    archiveGoal: async (
+      _: unknown,
+      { goalId }: { goalId: number },
+      context: MercuriusContext
+    ) => {
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
+      const goal = await prisma.goal.findUnique({ where: { id: goalId } })
+      if (!goal || goal.userId !== userId) throw new Error('Goal not found')
+      await prisma.goal.update({ where: { id: goalId }, data: { isActive: false } })
+      return true
     },
 
     reopenQuiz: async (

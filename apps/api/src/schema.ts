@@ -7,6 +7,8 @@ export const typeDefs = `
     streakInfo: StreakInfo!
     journalEntries(limit: Int, offset: Int): [JournalEntry!]!
     aiInsights: InsightsResult!
+    goals: [Goal!]!
+    goalSuggestions: [GoalSuggestion!]!
   }
 
   type Mutation {
@@ -21,6 +23,9 @@ export const typeDefs = `
     updateJournalEntry(id: Int!, content: String!): JournalEntry!
     deleteJournalEntry(id: Int!): Boolean!
     refreshInsights: InsightsResult!
+    createGoal(title: String!, description: String, category: String!, emoji: String!, frequency: String, source: String): Goal!
+    toggleGoalCompletion(goalId: Int!, date: String!): Goal!
+    archiveGoal(goalId: Int!): Boolean!
   }
 
   type User {
@@ -97,5 +102,28 @@ export const typeDefs = `
     items: [InsightItem!]!
     generatedAt: String
     isExample: Boolean!
+  }
+
+  type Goal {
+    id: Int!
+    title: String!
+    description: String
+    category: String!
+    emoji: String!
+    frequency: String!
+    source: String!
+    completedToday: Boolean!
+    currentStreak: Int!
+    totalCompletions: Int!
+    createdAt: String!
+  }
+
+  type GoalSuggestion {
+    title: String!
+    description: String
+    category: String!
+    emoji: String!
+    frequency: String!
+    isRecommended: Boolean!
   }
 `

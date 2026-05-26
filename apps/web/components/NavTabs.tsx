@@ -8,7 +8,8 @@ import { navDropdownStyle } from "@/lib/nav-dropdown-style"
 
 const TABS = [
   { label: "Overview", href: "/home" },
-  { label: "Journal", href: "/home/journal" },
+  { label: "Goals",    href: "/home/goals" },
+  { label: "Journal",  href: "/home/journal" },
 ]
 
 const tabGroupStyle = {
