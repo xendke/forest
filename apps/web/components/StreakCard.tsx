@@ -11,7 +11,7 @@ export function StreakCard({ streak }: StreakCardProps) {
 
   return (
     <section
-      className="col-span-12 lg:col-span-5 rounded-[22px] p-[22px] relative overflow-hidden"
+      className="col-span-12 lg:col-span-4 rounded-[22px] p-[22px] relative overflow-hidden"
       style={{
         background: "rgba(255,255,255,0.035)",
         border: "1px solid rgba(255,255,255,0.06)",

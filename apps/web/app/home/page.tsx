@@ -24,7 +24,7 @@ const HOME_QUERY = `query {
   }
   quizHistory(days: 30) { date wellbeing mood calm focus }
   streakInfo { current best last7 { date status } }
-  aiInsights { items { type emoji insight } generatedAt isExample }
+  aiInsights { items { type emoji insight detail } generatedAt isExample }
 }`
 
 type HomeData = {
@@ -135,10 +135,10 @@ export default async function HomePage() {
 
           {/* Dashboard grid */}
           <div className="grid grid-cols-12 gap-[18px]">
-            <WellbeingCard history={history} />
             <CheckInCard quiz={initialQuiz} />
-            <StreakCard streak={streak} />
             <AiInsightCard data={insights} />
+            <WellbeingCard history={history} />
+            <StreakCard streak={streak} />
           </div>
         </main>
       </div>

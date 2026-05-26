@@ -89,6 +89,7 @@ export const typeDefs = `
     type: String!
     emoji: String!
     insight: String!
+    detail: String
   }
 
   type AiInsightsResult {

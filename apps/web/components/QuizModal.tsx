@@ -157,6 +157,13 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
   const [answers, setAnswers] = useState<Record<number, string>>(() => initAnswers(initialQuiz))
   const [submitting, setSubmitting] = useState(false)
 
+  // Lock body scroll while the modal is visible
+  useEffect(() => {
+    const isOpen = screen !== "hidden" && screen !== "loading"
+    document.body.style.overflow = isOpen ? "hidden" : ""
+    return () => { document.body.style.overflow = "" }
+  }, [screen])
+
   // Client-side fallback fetch — only runs on mount when server didn't provide data
   useEffect(() => {
     if (initialQuiz !== undefined) return

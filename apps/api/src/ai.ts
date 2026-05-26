@@ -4,6 +4,7 @@ export interface InsightItem {
   type: 'positive' | 'warning' | 'neutral'
   emoji: string
   insight: string
+  detail?: string
 }
 
 const PLACEHOLDER_INSIGHTS: InsightItem[] = [
@@ -30,16 +31,11 @@ Look for:
 - What the user's best days and worst days have in common
 - Any habit or activity mentioned in journals that correlates with score changes
 
-Guidelines:
-- Be specific: cite numbers, day names, or quoted words where possible
-- Be concise: 1–2 sentences per insight, conversational tone
-- Mix positive observations ("keep doing X") with watchpoints ("notice when Y happens")
-- If data is sparse, say so honestly and suggest what would help
-
 Return a JSON array of 3–4 objects with exactly these fields:
 - "type": one of "positive", "warning", "neutral"
 - "emoji": one relevant emoji character
-- "insight": your observation (1–2 sentences)
+- "insight": a SHORT headline (max 12 words, no dates or numbers). State the pattern plainly. Example: "Mood and anxiety improve on days you exercise."
+- "detail": 1–2 sentences expanding on the evidence — this is where you can cite specific patterns, timeframes, or quoted journal words. Keep it conversational.
 
 Return ONLY valid JSON — no markdown fences, no explanation, nothing else.`
 

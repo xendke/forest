@@ -12,7 +12,7 @@ interface AiInsightCardProps {
 }
 
 const REFRESH_MUTATION = `
-  mutation { refreshAiInsights { items { type emoji insight } generatedAt isExample } }
+  mutation { refreshAiInsights { items { type emoji insight detail } generatedAt isExample } }
 `
 
 function timeAgo(iso: string): string {
@@ -58,7 +58,7 @@ export function AiInsightCard({ data: initialData }: AiInsightCardProps) {
 
   return (
     <section
-      className="col-span-12 lg:col-span-7 rounded-[22px] p-[22px] relative overflow-hidden flex flex-col"
+      className="col-span-12 lg:col-span-8 rounded-[22px] p-[22px] relative overflow-hidden flex flex-col"
       style={{
         background: "rgba(255,255,255,0.035)",
         border: "1px solid rgba(255,255,255,0.06)",
@@ -130,8 +130,19 @@ export function AiInsightCard({ data: initialData }: AiInsightCardProps) {
         {/* Insight items */}
         <div className="flex flex-col gap-[10px]">
           {items.map((item, i) => (
+            <InsightRow key={i} item={item} />
+          ))}
+        </div>
+      </div>
+    </section>
+  )
+}
+
+function InsightRow({ item }: { item: AiInsightItem }) {
+  const [expanded, setExpanded] = useState(false)
+
+  return (
             <div
-              key={i}
               className="flex items-start gap-3 px-3 py-3 rounded-[14px]"
               style={{
                 background: typeBg[item.type],
@@ -149,11 +160,30 @@ export function AiInsightCard({ data: initialData }: AiInsightCardProps) {
               {/* Text */}
               <div className="flex-1 min-w-0">
                 <p
-                  className="text-[13.5px] leading-[1.6]"
+                  className="text-[13.5px] font-medium leading-[1.5]"
                   style={{ color: "rgba(220,232,224,0.9)" }}
                 >
                   {item.insight}
                 </p>
+                {item.detail && (
+                  <>
+                    {expanded && (
+                      <p
+                        className="mt-1.5 text-[12.5px] leading-[1.6]"
+                        style={{ color: "rgba(154,168,160,0.85)" }}
+                      >
+                        {item.detail}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => setExpanded((v) => !v)}
+                      className="mt-1 text-[11.5px] font-medium transition-colors"
+                      style={{ color: "rgba(95,109,101,1)" }}
+                    >
+                      {expanded ? "Less ↑" : "More ↓"}
+                    </button>
+                  </>
+                )}
               </div>
 
               {/* Type accent bar */}
@@ -162,9 +192,5 @@ export function AiInsightCard({ data: initialData }: AiInsightCardProps) {
                 style={{ background: typeAccent[item.type] }}
               />
             </div>
-          ))}
-        </div>
-      </div>
-    </section>
   )
 }
