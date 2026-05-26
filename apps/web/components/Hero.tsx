@@ -36,7 +36,7 @@ export function Hero() {
           <p className="text-xs font-semibold tracking-[0.22em] uppercase text-primary/70">
             Mood Tracking · Self Growth
           </p>
-          <h1 className="text-5xl sm:text-6xl font-bold leading-[1.08] tracking-tight">
+          <h1 className="text-4xl sm:text-6xl font-bold leading-[1.08] tracking-tight">
             Track Your Mind.
             <br />
             <span className="text-primary">Cultivate Growth.</span>
