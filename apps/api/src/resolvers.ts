@@ -35,6 +35,13 @@ function getUserId(context: MercuriusContext): number | null {
   return payload?.userId ?? null
 }
 
+function getUserContext(context: MercuriusContext): { userId: number; isDemo: boolean } | null {
+  if (!context.authHeader?.startsWith('Bearer ')) return null
+  const payload = verifyToken(context.authHeader.slice(7))
+  if (!payload) return null
+  return { userId: payload.userId, isDemo: payload.isDemo ?? false }
+}
+
 function todayUTC(): string {
   return new Date().toISOString().split('T')[0]
 }
@@ -389,7 +396,14 @@ export const resolvers = {
       const valid = await bcrypt.compare(password, user.password)
       if (!valid) throw new Error('Invalid email or password')
 
-      const token = signToken(user.id, rememberMe)
+      const token = signToken(user.id, rememberMe, user.isDemo)
+      return { token, user: serializeUser(user) }
+    },
+
+    demoLogin: async () => {
+      const user = await prisma.user.findFirst({ where: { isDemo: true } })
+      if (!user) throw new Error('Demo account not configured')
+      const token = signToken(user.id, true, true)
       return { token, user: serializeUser(user) }
     },
 
@@ -421,13 +435,16 @@ export const resolvers = {
       }: { quizId: number; questionId: number; answer?: string; skipped?: boolean },
       context: MercuriusContext
     ) => {
-      const userId = getUserId(context)
-      if (!userId) throw new Error('Unauthorized')
+      const ctx = getUserContext(context)
+      if (!ctx) throw new Error('Unauthorized')
+      const { userId, isDemo } = ctx
 
-      // Verify the quiz belongs to this user
       const quiz = await prisma.dailyQuiz.findUnique({ where: { id: quizId } })
       if (!quiz || quiz.userId !== userId) throw new Error('Quiz not found')
 
+      if (isDemo) {
+        return { id: 0, quizId, questionId, answer: answer ?? null, skipped: skipped ?? false }
+      }
       return prisma.quizResponse.upsert({
         where: { quizId_questionId: { quizId, questionId } },
         update: { answer: answer ?? null, skipped: skipped ?? false },
@@ -440,12 +457,19 @@ export const resolvers = {
       { quizId, skipped }: { quizId: number; skipped?: boolean },
       context: MercuriusContext
     ) => {
-      const userId = getUserId(context)
-      if (!userId) throw new Error('Unauthorized')
+      const ctx = getUserContext(context)
+      if (!ctx) throw new Error('Unauthorized')
+      const { userId, isDemo } = ctx
 
-      const quiz = await prisma.dailyQuiz.findUnique({ where: { id: quizId } })
+      const quiz = await prisma.dailyQuiz.findUnique({
+        where: { id: quizId },
+        include: { questions: { orderBy: { id: 'asc' } }, responses: true },
+      })
       if (!quiz || quiz.userId !== userId) throw new Error('Quiz not found')
 
+      if (isDemo) {
+        return { ...quiz, completed: true, skipped: skipped ?? false }
+      }
       return prisma.dailyQuiz.update({
         where: { id: quizId },
         data: { completed: true, skipped: skipped ?? false },
@@ -458,8 +482,14 @@ export const resolvers = {
       { content }: { content: string },
       context: MercuriusContext
     ) => {
-      const userId = getUserId(context)
-      if (!userId) throw new Error('Unauthorized')
+      const ctx = getUserContext(context)
+      if (!ctx) throw new Error('Unauthorized')
+      const { userId, isDemo } = ctx
+
+      if (isDemo) {
+        const now = new Date().toISOString()
+        return { id: 0, userId, content, createdAt: now, updatedAt: now }
+      }
       const entry = await prisma.journalEntry.create({ data: { userId, content } })
       return { ...entry, createdAt: entry.createdAt.toISOString(), updatedAt: entry.updatedAt.toISOString() }
     },
@@ -469,8 +499,14 @@ export const resolvers = {
       { id, content }: { id: number; content: string },
       context: MercuriusContext
     ) => {
-      const userId = getUserId(context)
-      if (!userId) throw new Error('Unauthorized')
+      const ctx = getUserContext(context)
+      if (!ctx) throw new Error('Unauthorized')
+      const { userId, isDemo } = ctx
+
+      if (isDemo) {
+        const now = new Date().toISOString()
+        return { id, userId, content, createdAt: now, updatedAt: now }
+      }
       const entry = await prisma.journalEntry.findUnique({ where: { id } })
       if (!entry || entry.userId !== userId) throw new Error('Entry not found')
       const updated = await prisma.journalEntry.update({ where: { id }, data: { content } })
@@ -482,8 +518,11 @@ export const resolvers = {
       { id }: { id: number },
       context: MercuriusContext
     ) => {
-      const userId = getUserId(context)
-      if (!userId) throw new Error('Unauthorized')
+      const ctx = getUserContext(context)
+      if (!ctx) throw new Error('Unauthorized')
+      const { userId, isDemo } = ctx
+
+      if (isDemo) return true
       const entry = await prisma.journalEntry.findUnique({ where: { id } })
       if (!entry || entry.userId !== userId) throw new Error('Entry not found')
       await prisma.journalEntry.delete({ where: { id } })

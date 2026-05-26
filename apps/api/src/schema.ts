@@ -12,6 +12,7 @@ export const typeDefs = `
   type Mutation {
     register(email: String!, password: String!): AuthPayload!
     login(email: String!, password: String!, rememberMe: Boolean): AuthPayload!
+    demoLogin: AuthPayload!
     updateProfile(firstName: String, dob: String): User!
     submitQuizResponse(quizId: Int!, questionId: Int!, answer: String, skipped: Boolean): QuizResponse!
     completeQuiz(quizId: Int!, skipped: Boolean): DailyQuiz!

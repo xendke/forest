@@ -4,6 +4,7 @@ import { getServerToken } from "@/lib/auth"
 import { NavTabs } from "@/components/NavTabs"
 import { SproutIcon } from "@/components/SproutIcon"
 import { UserMenu } from "@/components/UserMenu"
+import { DemoButton } from "@/components/DemoButton"
 
 const navStyle = {
   background: "rgba(5, 15, 8, 0.7)",
@@ -55,12 +56,7 @@ export function Navbar({ variant = "marketing", firstName }: NavbarProps) {
             >
               How it works
             </Link>
-            <Link
-              href="#demo"
-              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
-            >
-              Demo
-            </Link>
+            <DemoButton />
             <Button size="sm" className="rounded-full px-5 text-xs font-semibold h-8" asChild>
               <Link href={isLoggedIn ? "/home" : "/join"}>
                 {isLoggedIn ? "Dashboard" : "Join Now"}
