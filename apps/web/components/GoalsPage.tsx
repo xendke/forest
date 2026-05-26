@@ -275,8 +275,13 @@ export function GoalsPage({
         TOGGLE_MUTATION,
         { goalId, date: today }
       )
+      // Keep optimistic completedToday; only sync streak/total from server
       setGoals((prev) =>
-        prev.map((g) => (g.id === goalId ? { ...g, ...data.toggleGoalCompletion } : g))
+        prev.map((g) =>
+          g.id === goalId
+            ? { ...g, currentStreak: data.toggleGoalCompletion.currentStreak, totalCompletions: data.toggleGoalCompletion.totalCompletions }
+            : g
+        )
       )
     } catch {
       setGoals((prev) =>

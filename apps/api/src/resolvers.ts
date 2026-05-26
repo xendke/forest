@@ -664,8 +664,26 @@ export const resolvers = {
       args: { title: string; description?: string; category: string; emoji: string; frequency?: string; source?: string },
       context: MercuriusContext
     ) => {
-      const userId = getUserId(context)
-      if (!userId) throw new Error('Unauthorized')
+      const ctx = getUserContext(context)
+      if (!ctx) throw new Error('Unauthorized')
+      const { userId, isDemo } = ctx
+
+      if (isDemo) {
+        return {
+          id: -(Date.now() % 100000),
+          title: args.title,
+          description: args.description ?? null,
+          category: args.category,
+          emoji: args.emoji,
+          frequency: args.frequency ?? 'daily',
+          source: args.source ?? 'manual',
+          completedToday: false,
+          currentStreak: 0,
+          totalCompletions: 0,
+          createdAt: new Date().toISOString(),
+        }
+      }
+
       const today = todayUTC()
       const goal = await prisma.goal.create({
         data: {
@@ -687,9 +705,20 @@ export const resolvers = {
       { goalId, date }: { goalId: number; date: string },
       context: MercuriusContext
     ) => {
-      const userId = getUserId(context)
-      if (!userId) throw new Error('Unauthorized')
+      const ctx = getUserContext(context)
+      if (!ctx) throw new Error('Unauthorized')
+      const { userId, isDemo } = ctx
       const today = todayUTC()
+
+      if (isDemo) {
+        return {
+          id: goalId,
+          title: '', description: null, category: '', emoji: '',
+          frequency: 'daily', source: 'manual',
+          completedToday: true, currentStreak: 1, totalCompletions: 1,
+          createdAt: new Date().toISOString(),
+        }
+      }
 
       const goal = await prisma.goal.findUnique({ where: { id: goalId } })
       if (!goal || goal.userId !== userId) throw new Error('Goal not found')
@@ -715,8 +744,12 @@ export const resolvers = {
       { goalId }: { goalId: number },
       context: MercuriusContext
     ) => {
-      const userId = getUserId(context)
-      if (!userId) throw new Error('Unauthorized')
+      const ctx = getUserContext(context)
+      if (!ctx) throw new Error('Unauthorized')
+      const { userId, isDemo } = ctx
+
+      if (isDemo) return true
+
       const goal = await prisma.goal.findUnique({ where: { id: goalId } })
       if (!goal || goal.userId !== userId) throw new Error('Goal not found')
       await prisma.goal.update({ where: { id: goalId }, data: { isActive: false } })
