@@ -155,6 +155,10 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
   const [quiz, setQuiz] = useState<DailyQuiz | null>(initialQuiz ?? null)
   const [currentIndex, setCurrentIndex] = useState(0)
   const [answers, setAnswers] = useState<Record<number, string>>(() => initAnswers(initialQuiz))
+  const [isEditing, setIsEditing] = useState(() => {
+    const saved = initAnswers(initialQuiz)
+    return Object.keys(saved).length > 0
+  })
   const [submitting, setSubmitting] = useState(false)
 
   // Lock body scroll while the modal is visible
@@ -191,9 +195,11 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
       setScreen("hidden")
       return
     }
+    const saved = initAnswers(initialQuiz)
     setQuiz(initialQuiz)
-    setAnswers(initAnswers(initialQuiz))
+    setAnswers(saved)
     setCurrentIndex(0)
+    setIsEditing(Object.keys(saved).length > 0)
     setScreen("welcome")
   }, [initialQuiz])
 
@@ -256,16 +262,22 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
               <div className="flex justify-center mb-3">
                 <div className="w-2.5 h-2.5 rounded-full bg-primary" style={{ boxShadow: "0 0 14px 3px hsl(142 65% 55% / 0.5)" }} />
               </div>
-              <h2 className="text-2xl font-bold tracking-tight">Daily Check-in</h2>
-              <p className="text-sm text-muted-foreground">{total} questions · ~2 minutes</p>
+              <h2 className="text-2xl font-bold tracking-tight">
+                {isEditing ? "Edit today's check-in" : "Daily Check-in"}
+              </h2>
+              <p className="text-sm text-muted-foreground">
+                {isEditing ? "Update your answers below" : `${total} questions · ~2 minutes`}
+              </p>
             </div>
             <div className="space-y-3">
               <Button className="w-full rounded-full" size="lg" onClick={() => setScreen("question")}>
-                Start →
+                {isEditing ? "Review answers →" : "Start →"}
               </Button>
-              <button onClick={skipQuiz} className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
-                Skip for today
-              </button>
+              {!isEditing && (
+                <button onClick={skipQuiz} className="w-full text-sm text-muted-foreground hover:text-foreground transition-colors py-2">
+                  Skip for today
+                </button>
+              )}
             </div>
           </div>
         )}
@@ -308,7 +320,7 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
               <Button variant="ghost" size="sm" disabled={currentIndex === 0 || submitting} onClick={() => setCurrentIndex((i) => i - 1)} className="text-muted-foreground">
                 ← Back
               </Button>
-              {currentQuestion.type === "free_text" && (
+              {currentQuestion.type === "free_text" ? (
                 <div className="flex items-center gap-3">
                   <button
                     onClick={() => saveAndAdvance(true)}
@@ -321,7 +333,11 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
                     {submitting ? "…" : isLast ? "Submit" : "Next →"}
                   </Button>
                 </div>
-              )}
+              ) : currentAnswer ? (
+                <Button variant="ghost" size="sm" disabled={submitting} onClick={() => saveAndAdvance(false)} className="text-muted-foreground">
+                  {submitting ? "…" : isLast ? "Submit →" : "Next →"}
+                </Button>
+              ) : null}
             </div>
           </div>
         )}
@@ -332,8 +348,8 @@ export function QuizModal({ initialQuiz }: QuizModalProps) {
               <div className="flex justify-center mb-3">
                 <div className="w-3 h-3 rounded-full bg-primary" style={{ boxShadow: "0 0 20px 5px hsl(142 65% 55% / 0.5)" }} />
               </div>
-              <h2 className="text-2xl font-bold">All done for today.</h2>
-              <p className="text-sm text-muted-foreground">Great work. See you tomorrow.</p>
+              <h2 className="text-2xl font-bold">{isEditing ? "Check-in updated." : "All done for today."}</h2>
+              <p className="text-sm text-muted-foreground">{isEditing ? "Your answers have been saved." : "Great work. See you tomorrow."}</p>
             </div>
             <Button
               className="w-full rounded-full"

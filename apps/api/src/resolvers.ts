@@ -544,16 +544,12 @@ export const resolvers = {
       }: { quizId: number; questionId: number; answer?: string; skipped?: boolean },
       context: MercuriusContext
     ) => {
-      const ctx = getUserContext(context)
-      if (!ctx) throw new Error('Unauthorized')
-      const { userId, isDemo } = ctx
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
 
       const quiz = await prisma.dailyQuiz.findUnique({ where: { id: quizId } })
       if (!quiz || quiz.userId !== userId) throw new Error('Quiz not found')
 
-      if (isDemo) {
-        return { id: 0, quizId, questionId, answer: answer ?? null, skipped: skipped ?? false }
-      }
       return prisma.quizResponse.upsert({
         where: { quizId_questionId: { quizId, questionId } },
         update: { answer: answer ?? null, skipped: skipped ?? false },
@@ -566,9 +562,8 @@ export const resolvers = {
       { quizId, skipped }: { quizId: number; skipped?: boolean },
       context: MercuriusContext
     ) => {
-      const ctx = getUserContext(context)
-      if (!ctx) throw new Error('Unauthorized')
-      const { userId, isDemo } = ctx
+      const userId = getUserId(context)
+      if (!userId) throw new Error('Unauthorized')
 
       const quiz = await prisma.dailyQuiz.findUnique({
         where: { id: quizId },
@@ -576,9 +571,6 @@ export const resolvers = {
       })
       if (!quiz || quiz.userId !== userId) throw new Error('Quiz not found')
 
-      if (isDemo) {
-        return { ...quiz, completed: true, skipped: skipped ?? false }
-      }
       return prisma.dailyQuiz.update({
         where: { id: quizId },
         data: { completed: true, skipped: skipped ?? false },
@@ -767,11 +759,10 @@ export const resolvers = {
       const quiz = await prisma.dailyQuiz.findUnique({ where: { id: quizId } })
       if (!quiz || quiz.userId !== userId) throw new Error('Quiz not found')
 
-      await prisma.quizResponse.deleteMany({ where: { quizId } })
-
+      // Keep existing responses so the modal can pre-fill previous answers
       return prisma.dailyQuiz.update({
         where: { id: quizId },
-        data: { skipped: false, completed: false },
+        data: { completed: false, skipped: false },
         include: { questions: { orderBy: { id: 'asc' } }, responses: true },
       })
     },

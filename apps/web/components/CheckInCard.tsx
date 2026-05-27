@@ -165,6 +165,17 @@ export function CheckInCard({ quiz }: CheckInCardProps) {
                 )
               })}
             </div>
+
+            {/* Edit button */}
+            <div className="mt-1" style={{ height: "1px", background: "rgba(255,255,255,0.06)" }} />
+            <button
+              onClick={handleReopen}
+              disabled={reopening}
+              className="text-[11px] font-medium transition-colors"
+              style={{ color: reopening ? "rgba(95,109,101,1)" : "rgba(154,168,160,0.6)" }}
+            >
+              {reopening ? "Opening…" : "Edit check-in →"}
+            </button>
           </div>
         ) : (
           <div
